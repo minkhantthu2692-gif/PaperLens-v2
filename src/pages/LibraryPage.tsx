@@ -164,7 +164,14 @@ export default function LibraryPage() {
 
   return (
     <div className={styles.page}>
-      <TopBar title={t('library.title')} subtitle={t('library.subtitle')} />
+      <TopBar
+        title={t('library.title')}
+        subtitle={t('library.subtitle')}
+        // The empty state already offers a centered import action, so the
+        // top-right button only appears once documents exist. Without it a
+        // populated Documents page would have no import entry point.
+        actions={documents.length > 0 ? importButton : undefined}
+      />
 
       <input
         ref={inputRef}
