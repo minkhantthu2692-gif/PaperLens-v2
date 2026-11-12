@@ -11,6 +11,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import type { Editor } from '@tiptap/react';
 import {
   AlertCircle,
+  ChevronDown,
   Download,
   Eraser,
   Focus,
@@ -24,7 +25,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useTranslation } from 'react-i18next';
-import { FocusModeExitControl } from '@/components/layout/FocusModeExitControl';
+
 import { useFocusMode } from '@/components/layout/FocusModeContext';
 import { Button } from '@/components/ui/Button';
 import type { DocumentRecord, SourceAsset } from '@/domain/document';
@@ -626,7 +627,7 @@ export default function WorkspacePage() {
           )}
         </div>
 
-        {isFocusMode ? <FocusModeExitControl onExit={() => setFocusMode(false)} /> : null}
+        
 
         <div
           className={styles.splitter}
@@ -702,11 +703,25 @@ export default function WorkspacePage() {
                 >
                   <Eraser size={16} aria-hidden="true" />
                 </Button>
+                {fullWorkspaceEnabled ? (
+                  <Button
+                    ref={focusToggleRef}
+                    variant={isFocusMode ? 'secondary' : 'ghost'}
+                    size="sm"
+                    iconOnly
+                    onClick={() => setFocusMode(!isFocusMode)}
+                    disabled={!editorReady}
+                    aria-label={t(isFocusMode ? 'workspace.exitFocusMode' : 'workspace.focusMode')}
+                    title={t(isFocusMode ? 'workspace.exitFocusMode' : 'workspace.focusMode')}
+                    aria-pressed={isFocusMode}
+                  >
+                    <Focus size={16} aria-hidden="true" />
+                  </Button>
+                ) : null}
                 <div className={styles.exportWrap} ref={menuRef}>
                   <Button
                     variant="primary"
                     size="sm"
-                    iconOnly
                     aria-label={exporting ? t('workspace.exporting') : t('workspace.export')}
                     title={exporting ? t('workspace.exporting') : t('workspace.export')}
                     aria-haspopup="menu"
@@ -716,6 +731,8 @@ export default function WorkspacePage() {
                     aria-busy={exporting}
                   >
                     <Download size={16} aria-hidden="true" />
+                    {exporting ? t('workspace.exporting') : t('workspace.export')}
+                    <ChevronDown size={16} aria-hidden="true" />
                   </Button>
                   {exportOpen ? (
                     <div className={styles.menu} role="menu">
@@ -758,21 +775,6 @@ export default function WorkspacePage() {
                     </div>
                   ) : null}
                 </div>
-                {fullWorkspaceEnabled ? (
-                  <Button
-                    ref={focusToggleRef}
-                    variant={isFocusMode ? 'secondary' : 'ghost'}
-                    size="sm"
-                    iconOnly
-                    onClick={() => setFocusMode(!isFocusMode)}
-                    disabled={!editorReady}
-                    aria-label={t(isFocusMode ? 'workspace.exitFocusMode' : 'workspace.focusMode')}
-                    title={t(isFocusMode ? 'workspace.exitFocusMode' : 'workspace.focusMode')}
-                    aria-pressed={isFocusMode}
-                  >
-                    <Focus size={16} aria-hidden="true" />
-                  </Button>
-                ) : null}
               </>
             }
             onEditorReady={handleEditorReady}
