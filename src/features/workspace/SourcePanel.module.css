@@ -38,19 +38,34 @@
   display: flex;
   flex: none;
   flex-wrap: wrap;
-  gap: var(--space-2);
   align-items: center;
-  justify-content: space-between;
-  padding: var(--space-2);
+  gap: var(--toolbar-gap, var(--space-2));
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--color-border-subtle);
   background-color: var(--color-bg-subtle);
+  --toolbar-gap: var(--space-2);
+  --group-gap: var(--space-1);
+  --section-gap: var(--space-3);
+}
+
+.toolbarSection {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--group-gap);
+}
+
+.toolbarSection + .toolbarSection {
+  margin-left: var(--section-gap);
+  padding-left: var(--section-gap);
+  border-left: 1px solid var(--color-border-subtle);
 }
 
 .toolGroup {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: var(--space-1);
   align-items: center;
+  gap: var(--group-gap);
 }
 
 .toolGroup button {
@@ -72,7 +87,7 @@
 }
 
 .percent {
-  min-width: 3.25rem;
+  min-width: 3rem;
   text-align: center;
 }
 
@@ -318,7 +333,40 @@
     gap: var(--space-1);
   }
 
+  .toolbar {
+    --toolbar-gap: var(--space-1);
+    --group-gap: var(--space-1);
+    --section-gap: var(--space-2);
+    padding: var(--space-1) var(--space-2);
+  }
+
+  .toolbarSection + .toolbarSection {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: none;
+    margin-top: var(--space-1);
+    padding-top: var(--space-1);
+    border-top: 1px solid var(--color-border-subtle);
+    width: 100%;
+  }
+
   .scroll {
-    padding: var(--space-3);
+    padding: var(--space-2);
+  }
+}
+
+@media (max-width: 28rem) {
+  .toolbar {
+    --toolbar-gap: var(--space-1);
+    --group-gap: 2px;
+    --section-gap: var(--space-1);
+  }
+
+  .percent {
+    min-width: 2.5rem;
+  }
+
+  .pageIndicator {
+    padding: 0 var(--space-1);
   }
 }

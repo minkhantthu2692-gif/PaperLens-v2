@@ -616,152 +616,160 @@ function PdfSource({
   return (
     <>
       <div className={styles.toolbar} role="toolbar" aria-label={t('workspace.pdfSource')}>
-        <div className={styles.toolGroup}>
-          <Button
-            variant="ghost"
-            size="sm"
-            iconOnly
-            onClick={() => setPageNumber((page) => Math.max(1, page - 1))}
-            disabled={pageNumber <= 1}
-            aria-label={t('workspace.previousPage')}
-            title={t('workspace.previousPage')}
-          >
-            <ChevronLeft size={17} aria-hidden="true" />
-          </Button>
-          <span className={styles.pageIndicator}>
-            {t('workspace.pageOf', { page: pageNumber, total: numPages || 1 })}
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            iconOnly
-            onClick={() => {
-              setPageNumber((page) => Math.min(numPages || 1, page + 1));
-            }}
-            disabled={pageNumber >= (numPages || 1)}
-            aria-label={t('workspace.nextPage')}
-            title={t('workspace.nextPage')}
-          >
-            <ChevronRight size={17} aria-hidden="true" />
-          </Button>
+        <div className={styles.toolbarSection}>
+          <div className={styles.toolGroup} aria-label="Page navigation">
+            <Button
+              variant="ghost"
+              size="sm"
+              iconOnly
+              onClick={() => setPageNumber((page) => Math.max(1, page - 1))}
+              disabled={pageNumber <= 1}
+              aria-label={t('workspace.previousPage')}
+              title={t('workspace.previousPage')}
+            >
+              <ChevronLeft size={17} aria-hidden="true" />
+            </Button>
+            <span className={styles.pageIndicator}>
+              {t('workspace.pageOf', { page: pageNumber, total: numPages || 1 })}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              iconOnly
+              onClick={() => {
+                setPageNumber((page) => Math.min(numPages || 1, page + 1));
+              }}
+              disabled={pageNumber >= (numPages || 1)}
+              aria-label={t('workspace.nextPage')}
+              title={t('workspace.nextPage')}
+            >
+              <ChevronRight size={17} aria-hidden="true" />
+            </Button>
+          </div>
         </div>
 
-        <div className={styles.toolGroup}>
-          <Button
-            variant="ghost"
-            size="sm"
-            iconOnly
-            onClick={() => zoomBy(-SCALE_STEP)}
-            aria-label={t('workspace.zoomOut')}
-            title={t('workspace.zoomOut')}
-          >
-            <ZoomOut size={17} aria-hidden="true" />
-          </Button>
-          <span className={styles.percent}>{Math.round(scale * 100)}%</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            iconOnly
-            onClick={() => zoomBy(SCALE_STEP)}
-            aria-label={t('workspace.zoomIn')}
-            title={t('workspace.zoomIn')}
-          >
-            <ZoomIn size={17} aria-hidden="true" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            iconOnly
-            onClick={() => {
-              wheelAnchorRef.current = null;
-              setFitMode(true);
-            }}
-            aria-label={t('workspace.fitToView')}
-            title={t('workspace.fitToView')}
-            aria-pressed={fitMode}
-          >
-            <Maximize size={16} aria-hidden="true" />
-          </Button>
+        <div className={styles.toolbarSection}>
+          <div className={styles.toolGroup} aria-label="Zoom controls">
+            <Button
+              variant="ghost"
+              size="sm"
+              iconOnly
+              onClick={() => zoomBy(-SCALE_STEP)}
+              aria-label={t('workspace.zoomOut')}
+              title={t('workspace.zoomOut')}
+            >
+              <ZoomOut size={17} aria-hidden="true" />
+            </Button>
+            <span className={styles.percent}>{Math.round(scale * 100)}%</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              iconOnly
+              onClick={() => zoomBy(SCALE_STEP)}
+              aria-label={t('workspace.zoomIn')}
+              title={t('workspace.zoomIn')}
+            >
+              <ZoomIn size={17} aria-hidden="true" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              iconOnly
+              onClick={() => {
+                wheelAnchorRef.current = null;
+                setFitMode(true);
+              }}
+              aria-label={t('workspace.fitToView')}
+              title={t('workspace.fitToView')}
+              aria-pressed={fitMode}
+            >
+              <Maximize size={16} aria-hidden="true" />
+            </Button>
+          </div>
         </div>
 
-        <div className={styles.toolGroup}>
-          <Button
-            variant="ghost"
-            size="sm"
-            iconOnly
-            className={mode === 'text' ? styles.active : undefined}
-            onClick={() => setMode('text')}
-            aria-label={t('workspace.selectText')}
-            title={t('workspace.selectText')}
-            aria-pressed={mode === 'text'}
-          >
-            <MousePointer2 size={16} aria-hidden="true" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            iconOnly
-            className={mode === 'pan' ? styles.active : undefined}
-            onClick={() => setMode((current) => (current === 'pan' ? 'text' : 'pan'))}
-            aria-label={t('common.handTool')}
-            title={t('common.handToolHint')}
-            aria-pressed={mode === 'pan'}
-          >
-            <Hand size={17} aria-hidden="true" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            iconOnly
-            className={mode === 'region' ? styles.active : undefined}
-            onClick={() => {
-              setMode('region');
-              setStatus(null);
-            }}
-            aria-label={t('workspace.selectRegion')}
-            title={t('workspace.selectRegion')}
-            aria-pressed={mode === 'region'}
-          >
-            <ScanLine size={17} aria-hidden="true" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            iconOnly
-            onClick={() => setThumbnailsOpen((value) => !value)}
-            aria-label={t('workspace.toggleThumbnails')}
-            title={t('workspace.thumbnails')}
-            aria-expanded={thumbnailsOpen}
-          >
-            <FileType2 size={16} aria-hidden="true" />
-          </Button>
+        <div className={styles.toolbarSection}>
+          <div className={styles.toolGroup} aria-label="View mode">
+            <Button
+              variant="ghost"
+              size="sm"
+              iconOnly
+              className={mode === 'text' ? styles.active : undefined}
+              onClick={() => setMode('text')}
+              aria-label={t('workspace.selectText')}
+              title={t('workspace.selectText')}
+              aria-pressed={mode === 'text'}
+            >
+              <MousePointer2 size={16} aria-hidden="true" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              iconOnly
+              className={mode === 'pan' ? styles.active : undefined}
+              onClick={() => setMode((current) => (current === 'pan' ? 'text' : 'pan'))}
+              aria-label={t('common.handTool')}
+              title={t('common.handToolHint')}
+              aria-pressed={mode === 'pan'}
+            >
+              <Hand size={17} aria-hidden="true" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              iconOnly
+              className={mode === 'region' ? styles.active : undefined}
+              onClick={() => {
+                setMode('region');
+                setStatus(null);
+              }}
+              aria-label={t('workspace.selectRegion')}
+              title={t('workspace.selectRegion')}
+              aria-pressed={mode === 'region'}
+            >
+              <ScanLine size={17} aria-hidden="true" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              iconOnly
+              onClick={() => setThumbnailsOpen((value) => !value)}
+              aria-label={t('workspace.toggleThumbnails')}
+              title={t('workspace.thumbnails')}
+              aria-expanded={thumbnailsOpen}
+            >
+              <FileType2 size={16} aria-hidden="true" />
+            </Button>
+          </div>
         </div>
 
-        <div className={styles.toolGroup}>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onInsertText(pageText)}
-            disabled={!pageText}
-            title={t('workspace.insertPageText')}
-          >
-            <FileText size={15} aria-hidden="true" />
-            {t('workspace.insertPageText')}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => onOcrPage(pageNumber)}>
-            <ScanText size={15} aria-hidden="true" />
-            {t('workspace.ocrPage')}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onAiText(pageText, t('workspace.aiScopePage', { page: pageNumber }))}
-            disabled={!pageText}
-            title={t('workspace.aiPage')}
-          >
-            <Sparkles size={15} aria-hidden="true" />
-            {t('workspace.aiPage')}
-          </Button>
+        <div className={styles.toolbarSection}>
+          <div className={styles.toolGroup} aria-label="Page actions">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onInsertText(pageText)}
+              disabled={!pageText}
+              title={t('workspace.insertPageText')}
+            >
+              <FileText size={15} aria-hidden="true" />
+              {t('workspace.insertPageText')}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => onOcrPage(pageNumber)}>
+              <ScanText size={15} aria-hidden="true" />
+              {t('workspace.ocrPage')}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onAiText(pageText, t('workspace.aiScopePage', { page: pageNumber }))}
+              disabled={!pageText}
+              title={t('workspace.aiPage')}
+            >
+              <Sparkles size={15} aria-hidden="true" />
+              {t('workspace.aiPage')}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -1134,96 +1142,101 @@ function ImageSource({
   return (
     <>
       <div className={styles.toolbar} role="toolbar" aria-label={t('workspace.imageSource')}>
-        <div className={styles.toolGroup}>
-          <Button
-            variant="ghost"
-            size="sm"
-            iconOnly
-            onClick={() => zoomBy(-0.25)}
-            aria-label={t('workspace.zoomOut')}
-            title={t('workspace.zoomOut')}
-          >
-            <ZoomOut size={17} aria-hidden="true" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className={styles.zoomReset}
-            onClick={actualSize}
-            aria-label={t('workspace.actualSize')}
-            title={t('workspace.actualSize')}
-          >
-            <span className={styles.percent}>{Math.round(zoom * 100)}%</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            iconOnly
-            onClick={() => zoomBy(0.25)}
-            aria-label={t('workspace.zoomIn')}
-            title={t('workspace.zoomIn')}
-          >
-            <ZoomIn size={17} aria-hidden="true" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            iconOnly
-            onClick={fitToView}
-            aria-label={t('workspace.fitToView')}
-            title={t('workspace.fitToView')}
-            aria-pressed={fitMode}
-          >
-            <Maximize size={16} aria-hidden="true" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            iconOnly
-            className={panEnabled ? styles.active : undefined}
-            onClick={togglePan}
-            aria-label={t('common.handTool')}
-            title={t('common.handToolHint')}
-            aria-pressed={panEnabled}
-          >
-            <Hand size={17} aria-hidden="true" />
-          </Button>
-        </div>
-        <div className={styles.toolGroup}>
-          {onRefineImage ? (
+        <div className={styles.toolbarSection}>
+          <div className={styles.toolGroup} aria-label="Zoom and view controls">
             <Button
               variant="ghost"
               size="sm"
-              onClick={onRefineImage}
-              title={t('workspace.refineImageHint')}
+              iconOnly
+              onClick={() => zoomBy(-0.25)}
+              aria-label={t('workspace.zoomOut')}
+              title={t('workspace.zoomOut')}
             >
-              <Wand2 size={15} aria-hidden="true" />
-              {hasRefinedImage ? t('workspace.refineImageUpdate') : t('workspace.refineImage')}
+              <ZoomOut size={17} aria-hidden="true" />
             </Button>
-          ) : null}
-          <Button variant="ghost" size="sm" onClick={onOcrImage}>
-            <ScanText size={15} aria-hidden="true" />
-            {t('workspace.ocrImage')}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            iconOnly
-            className={mode === 'region' ? styles.active : undefined}
-            onClick={() => {
-              if (mode === 'region') {
-                setMode('view');
-              } else {
-                setMode('region');
-                setPanEnabled(false);
-              }
-            }}
-            aria-label={t('workspace.selectRegion')}
-            title={t('workspace.selectRegion')}
-            aria-pressed={mode === 'region'}
-          >
-            <ScanLine size={17} aria-hidden="true" />
-          </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={styles.zoomReset}
+              onClick={actualSize}
+              aria-label={t('workspace.actualSize')}
+              title={t('workspace.actualSize')}
+            >
+              <span className={styles.percent}>{Math.round(zoom * 100)}%</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              iconOnly
+              onClick={() => zoomBy(0.25)}
+              aria-label={t('workspace.zoomIn')}
+              title={t('workspace.zoomIn')}
+            >
+              <ZoomIn size={17} aria-hidden="true" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              iconOnly
+              onClick={fitToView}
+              aria-label={t('workspace.fitToView')}
+              title={t('workspace.fitToView')}
+              aria-pressed={fitMode}
+            >
+              <Maximize size={16} aria-hidden="true" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              iconOnly
+              className={panEnabled ? styles.active : undefined}
+              onClick={togglePan}
+              aria-label={t('common.handTool')}
+              title={t('common.handToolHint')}
+              aria-pressed={panEnabled}
+            >
+              <Hand size={17} aria-hidden="true" />
+            </Button>
+          </div>
+        </div>
+
+        <div className={styles.toolbarSection}>
+          <div className={styles.toolGroup} aria-label="Image actions">
+            {onRefineImage ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onRefineImage}
+                title={t('workspace.refineImageHint')}
+              >
+                <Wand2 size={15} aria-hidden="true" />
+                {hasRefinedImage ? t('workspace.refineImageUpdate') : t('workspace.refineImage')}
+              </Button>
+            ) : null}
+            <Button variant="ghost" size="sm" onClick={onOcrImage}>
+              <ScanText size={15} aria-hidden="true" />
+              {t('workspace.ocrImage')}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              iconOnly
+              className={mode === 'region' ? styles.active : undefined}
+              onClick={() => {
+                if (mode === 'region') {
+                  setMode('view');
+                } else {
+                  setMode('region');
+                  setPanEnabled(false);
+                }
+              }}
+              aria-label={t('workspace.selectRegion')}
+              title={t('workspace.selectRegion')}
+              aria-pressed={mode === 'region'}
+            >
+              <ScanLine size={17} aria-hidden="true" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -1364,27 +1377,31 @@ function TextSource({
 
   return (
     <>
-      <div className={styles.toolbar}>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onInsertText(text)}
-          disabled={!text}
-          title={t('workspace.insertAllText')}
-        >
-          <FileText size={15} aria-hidden="true" />
-          {t('workspace.insertAllText')}
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onAiText(text, t('workspace.aiScopeDocument'))}
-          disabled={!text}
-          title={t('workspace.aiDocument')}
-        >
-          <Sparkles size={15} aria-hidden="true" />
-          {t('workspace.aiDocument')}
-        </Button>
+      <div className={styles.toolbar} role="toolbar" aria-label={t('workspace.textSource')}>
+        <div className={styles.toolbarSection}>
+          <div className={styles.toolGroup} aria-label="Document actions">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onInsertText(text)}
+              disabled={!text}
+              title={t('workspace.insertAllText')}
+            >
+              <FileText size={15} aria-hidden="true" />
+              {t('workspace.insertAllText')}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onAiText(text, t('workspace.aiScopeDocument'))}
+              disabled={!text}
+              title={t('workspace.aiDocument')}
+            >
+              <Sparkles size={15} aria-hidden="true" />
+              {t('workspace.aiDocument')}
+            </Button>
+          </div>
+        </div>
       </div>
       <div className={styles.scroll}>
         {error ? (
