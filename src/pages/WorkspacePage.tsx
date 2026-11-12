@@ -618,6 +618,7 @@ export default function WorkspacePage() {
               onAiText={handleSourceAiText}
               onRefineImage={() => setRefineOpen(true)}
               hasRefinedImage={!!document.source.refined}
+              onExit={() => navigate('/')}
             />
           ) : (
             <p className={styles.panelFallback}>{t('workspace.sourceError')}</p>

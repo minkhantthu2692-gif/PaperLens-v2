@@ -19,6 +19,7 @@ import {
   X,
   ZoomIn,
   ZoomOut,
+  ArrowLeft,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useTranslation } from 'react-i18next';
@@ -46,6 +47,8 @@ interface SourcePanelProps {
   onRefineImage?: () => void;
   /** Whether a refined copy already exists for this image source. */
   hasRefinedImage?: boolean;
+  /** Called when the user wants to exit back to the library/documents page. */
+  onExit?: () => void;
 }
 
 type PdfModule = typeof PdfJs;
@@ -264,6 +267,7 @@ export function SourcePanel({
   onAiText,
   onRefineImage,
   hasRefinedImage = false,
+  onExit,
 }: SourcePanelProps) {
   const { t } = useTranslation();
   const kindLabel =
@@ -298,6 +302,7 @@ export function SourcePanel({
           onOcrPage={onOcrPage}
           onOcrRegion={onOcrRegion}
           onAiText={onAiText}
+          {...(onExit ? { onExit } : {})}
         />
       ) : asset.mimeType.startsWith('image/') ? (
         <ImageSource
@@ -306,9 +311,15 @@ export function SourcePanel({
           onOcrRegion={onOcrRegion}
           {...(onRefineImage ? { onRefineImage } : {})}
           hasRefinedImage={hasRefinedImage}
+          {...(onExit ? { onExit } : {})}
         />
       ) : (
-        <TextSource asset={asset} onInsertText={onInsertText} onAiText={onAiText} />
+        <TextSource
+          asset={asset}
+          onInsertText={onInsertText}
+          onAiText={onAiText}
+          {...(onExit ? { onExit } : {})}
+        />
       )}
     </section>
   );
@@ -322,6 +333,7 @@ function PdfSource({
   onOcrPage,
   onOcrRegion,
   onAiText,
+  onExit,
 }: {
   asset: SourceAsset;
   initialPageCount?: number;
@@ -330,6 +342,7 @@ function PdfSource({
   onOcrPage: (pageNumber: number) => void;
   onOcrRegion: (blob: Blob) => void;
   onAiText: (text: string, scopeLabel: string) => void;
+  onExit?: () => void;
 }) {
   const { t } = useTranslation();
   const [pdfjs, setPdfjs] = useState<PdfModule | null>(null);
@@ -616,6 +629,23 @@ function PdfSource({
   return (
     <>
       <div className={styles.toolbar} role="toolbar" aria-label={t('workspace.pdfSource')}>
+        {onExit ? (
+          <div className={styles.toolbarSection}>
+            <div className={styles.toolGroup} aria-label="Navigation">
+              <Button
+                variant="ghost"
+                size="sm"
+                iconOnly
+                onClick={onExit}
+                aria-label={t('workspace.backToDocuments')}
+                title={t('workspace.backToDocuments')}
+              >
+                <ArrowLeft size={17} aria-hidden="true" />
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
         <div className={styles.toolbarSection}>
           <div className={styles.toolGroup} aria-label="Page navigation">
             <Button
@@ -952,12 +982,14 @@ function ImageSource({
   onOcrRegion,
   onRefineImage,
   hasRefinedImage,
+  onExit,
 }: {
   asset: SourceAsset;
   onOcrImage: () => void;
   onOcrRegion: (blob: Blob) => void;
   onRefineImage?: (() => void) | undefined;
   hasRefinedImage: boolean;
+  onExit?: () => void;
 }) {
   const { t } = useTranslation();
   const [url, setUrl] = useState<string | null>(null);
@@ -1142,6 +1174,23 @@ function ImageSource({
   return (
     <>
       <div className={styles.toolbar} role="toolbar" aria-label={t('workspace.imageSource')}>
+        {onExit ? (
+          <div className={styles.toolbarSection}>
+            <div className={styles.toolGroup} aria-label="Navigation">
+              <Button
+                variant="ghost"
+                size="sm"
+                iconOnly
+                onClick={onExit}
+                aria-label={t('workspace.backToDocuments')}
+                title={t('workspace.backToDocuments')}
+              >
+                <ArrowLeft size={17} aria-hidden="true" />
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
         <div className={styles.toolbarSection}>
           <div className={styles.toolGroup} aria-label="Zoom and view controls">
             <Button
@@ -1347,10 +1396,12 @@ function TextSource({
   asset,
   onInsertText,
   onAiText,
+  onExit,
 }: {
   asset: SourceAsset;
   onInsertText: (text: string) => void;
   onAiText: (text: string, scopeLabel: string) => void;
+  onExit?: () => void;
 }) {
   const { t } = useTranslation();
   const [text, setText] = useState('');
@@ -1378,6 +1429,23 @@ function TextSource({
   return (
     <>
       <div className={styles.toolbar} role="toolbar" aria-label={t('workspace.textSource')}>
+        {onExit ? (
+          <div className={styles.toolbarSection}>
+            <div className={styles.toolGroup} aria-label="Navigation">
+              <Button
+                variant="ghost"
+                size="sm"
+                iconOnly
+                onClick={onExit}
+                aria-label={t('workspace.backToDocuments')}
+                title={t('workspace.backToDocuments')}
+              >
+                <ArrowLeft size={17} aria-hidden="true" />
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
         <div className={styles.toolbarSection}>
           <div className={styles.toolGroup} aria-label="Document actions">
             <Button
