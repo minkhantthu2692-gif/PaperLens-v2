@@ -164,7 +164,7 @@ export default function LibraryPage() {
 
   return (
     <div className={styles.page}>
-      <TopBar title={t('library.title')} subtitle={t('library.subtitle')} actions={importButton} />
+      <TopBar title={t('library.title')} subtitle={t('library.subtitle')} />
 
       <input
         ref={inputRef}
