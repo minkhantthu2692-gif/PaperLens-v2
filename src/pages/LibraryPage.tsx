@@ -183,24 +183,6 @@ export default function LibraryPage() {
           </div>
         ) : null}
 
-        <div
-          className={`${styles.dropzone} ${dragging ? styles.dropzoneActive : ''}`}
-          onDragOver={(event) => {
-            event.preventDefault();
-            setDragging(true);
-          }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={handleDrop}
-        >
-          <Upload size={20} aria-hidden="true" />
-          <div>
-            <p className={styles.dropTitle}>
-              {dragging ? t('library.dropActive') : t('library.dropTitle')}
-            </p>
-            <p className={styles.dropHint}>{t('library.dropHint')}</p>
-          </div>
-        </div>
-
         {loading ? (
           <p className={styles.muted} role="status">
             {t('common.loading')}
@@ -209,6 +191,23 @@ export default function LibraryPage() {
 
         {!loading && documents.length === 0 ? (
           <div className={styles.empty}>
+            <div
+              className={`${styles.dropzone} ${dragging ? styles.dropzoneActive : ''}`}
+              onDragOver={(event) => {
+                event.preventDefault();
+                setDragging(true);
+              }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={handleDrop}
+            >
+              <Upload size={20} aria-hidden="true" />
+              <div>
+                <p className={styles.dropTitle}>
+                  {dragging ? t('library.dropActive') : t('library.dropTitle')}
+                </p>
+                <p className={styles.dropHint}>{t('library.dropHint')}</p>
+              </div>
+            </div>
             <span className={styles.emptyIcon}>
               <FileText size={26} aria-hidden="true" />
             </span>
