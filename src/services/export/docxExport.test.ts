@@ -201,4 +201,52 @@ describe('DOCX export', () => {
     expect(documentXml).toContain('<w:jc w:val="center"/>');
     expect(documentXml).toContain('<w:jc w:val="left"/>');
   });
+
+  it('exports text formatting, Myanmar font selection, highlights, and paragraph spacing', async () => {
+    const formatted: JSONContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          attrs: { lineSpacing: '1.5' },
+          content: [
+            {
+              type: 'text',
+              text: 'မြန်မာစာ',
+              marks: [
+                {
+                  type: 'textStyle',
+                  attrs: {
+                    fontFamily: '"Pyidaungsu", "Noto Sans Myanmar", sans-serif',
+                    fontSize: '24px',
+                    color: '#2255AA',
+                  },
+                },
+                { type: 'bold' },
+                { type: 'italic' },
+                { type: 'underline' },
+                { type: 'strike' },
+                { type: 'highlight', attrs: { color: '#FFEE00' } },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const blob = await createDocxBlob('Formatted document', formatted);
+    const { documentXml } = await unpack(blob);
+
+    expect(documentXml).toContain('မြန်မာစာ');
+    expect(documentXml).toContain('w:ascii="Pyidaungsu"');
+    expect(documentXml).toContain('w:cs="Pyidaungsu"');
+    expect(documentXml).toContain('<w:sz w:val="36"/>');
+    expect(documentXml).toContain('<w:color w:val="2255AA"/>');
+    expect(documentXml).toContain('<w:shd w:fill="FFEE00" w:val="clear"/>');
+    expect(documentXml).toContain('<w:b/>');
+    expect(documentXml).toContain('<w:i/>');
+    expect(documentXml).toContain('<w:u w:val="single"/>');
+    expect(documentXml).toContain('<w:strike/>');
+    expect(documentXml).toContain('w:line="360"');
+  });
 });

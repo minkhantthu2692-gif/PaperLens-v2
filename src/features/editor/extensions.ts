@@ -4,6 +4,7 @@ import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
 import Placeholder from '@tiptap/extension-placeholder';
 import { PARAGRAPH_ALIGNMENTS } from '@/domain/paragraphAlignment';
+import { ParagraphLineSpacing, TextHighlight, TextStyle } from './formattingExtensions';
 import {
   createSearchHighlightExtension,
   type SearchHighlightClasses,
@@ -31,6 +32,9 @@ export function createEditorExtensions(placeholder: string, options: EditorExten
       alignments: [...PARAGRAPH_ALIGNMENTS],
       defaultAlignment: 'left',
     }),
+    TextStyle,
+    TextHighlight,
+    ParagraphLineSpacing,
     Placeholder.configure({ placeholder }),
     ...(options.searchHighlight ? [createSearchHighlightExtension(options.searchHighlight)] : []),
   ];

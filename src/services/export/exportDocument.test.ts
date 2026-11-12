@@ -66,6 +66,31 @@ describe('document exports', () => {
     expect(print).toHaveBeenCalledOnce();
   });
 
+  it('preserves inline formatting and Myanmar text in HTML and PDF print output', () => {
+    const formatted =
+      '<p style="text-align: justify; line-height: 1.5"><span style="font-family: &quot;Noto Sans Myanmar&quot;, Pyidaungsu, sans-serif; font-size: 24px; color: rgb(34, 85, 170)"><strong><em><u><s>မြန်မာစာ</s></u></em></strong></span><mark style="background-color: rgb(255, 238, 0)"> highlighted</mark></p>';
+    const html = buildHtmlDocument('Formatted document', formatted);
+
+    expect(html).toContain('font-family: &quot;Noto Sans Myanmar&quot;');
+    expect(html).toContain('font-size: 24px');
+    expect(html).toContain('color: rgb(34, 85, 170)');
+    expect(html).toContain('background-color: rgb(255, 238, 0)');
+    expect(html).toContain('<strong><em><u><s>မြန်မာစာ</s></u></em></strong>');
+    expect(html).toContain('line-height: 1.5');
+
+    const documentWrite = vi.spyOn(document, 'write').mockImplementation(() => undefined);
+    vi.spyOn(window, 'open').mockReturnValue(window);
+    vi.spyOn(document, 'open').mockImplementation(() => window);
+    vi.spyOn(document, 'close').mockImplementation(() => undefined);
+    vi.spyOn(window, 'focus').mockImplementation(() => undefined);
+    vi.spyOn(window, 'print').mockImplementation(() => undefined);
+
+    printDocument('Formatted document', formatted);
+
+    expect(documentWrite).toHaveBeenCalledWith(expect.stringContaining('<mark'));
+    expect(documentWrite).toHaveBeenCalledWith(expect.stringContaining('မြန်မာစာ'));
+  });
+
   it('preserves paragraph breaks in plain text without adding unsupported alignment markup', async () => {
     exportPlainText('Aligned document', 'First paragraph\n\nSecond paragraph');
 

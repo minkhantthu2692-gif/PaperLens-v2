@@ -27,7 +27,7 @@ export function buildHtmlDocument(title: string, html: string): string {
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>${escapeHtml(title)}</title>
 <style>
-  body { max-width: 46rem; margin: 2rem auto; padding: 0 1.25rem; font-family: Georgia, 'Noto Serif', 'Noto Serif Myanmar', serif; line-height: 1.65; color: #111827; }
+  body { max-width: 46rem; margin: 2rem auto; padding: 0 1.25rem; font-family: 'Source Serif 4', 'Iowan Old Style', 'Noto Serif', Pyidaungsu, 'Noto Sans Myanmar', 'Noto Serif Myanmar', Georgia, serif; line-height: 1.15; color: #111827; }
   h1, h2, h3 { line-height: 1.25; }
   blockquote { margin-left: 0; padding-left: 1rem; border-left: 3px solid #c7d2fe; color: #374151; }
   p { margin: 0 0 1rem; }

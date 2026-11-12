@@ -1,4 +1,6 @@
 .shell {
+  container-name: editor-panel;
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -33,12 +35,13 @@
 }
 
 .toolbar.fullWorkspaceToolbar > button,
-.toolbar.fullWorkspaceToolbar > select,
-.toolbar.fullWorkspaceToolbar > .divider {
+.toolbar.fullWorkspaceToolbar > .divider,
+.toolbar.fullWorkspaceToolbar .toolbarGroup > button {
   flex: none;
 }
 
-.toolbar.fullWorkspaceToolbar > button {
+.toolbar.fullWorkspaceToolbar > button,
+.toolbar.fullWorkspaceToolbar .toolbarGroup > button {
   width: 1.75rem;
   min-width: 1.75rem;
   min-height: 1.75rem;
@@ -88,13 +91,41 @@
 .toolbar {
   display: flex;
   flex: none;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: var(--space-1);
   align-items: center;
+  min-width: 0;
   padding: var(--space-2);
   overflow-x: auto;
   border-bottom: 1px solid var(--color-border-subtle);
   background-color: var(--color-bg-subtle);
+}
+
+.toolbarGroup {
+  display: flex;
+  flex: none;
+  gap: var(--space-1);
+  align-items: center;
+}
+
+.moreMenu {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  align-items: center;
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-border-subtle);
+  background-color: var(--color-bg-subtle);
+}
+
+.lineSpacingLabel {
+  display: inline-flex;
+  flex: none;
+  gap: var(--space-2);
+  align-items: center;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
 }
 
 @media (max-width: 40rem) {
@@ -121,6 +152,38 @@
     width: 1.875rem;
     min-width: 1.875rem;
     min-height: 1.875rem;
+  }
+
+  .toolbar {
+    gap: 0;
+    padding: var(--space-1);
+  }
+
+  .toolbarGroup {
+    gap: 0;
+  }
+
+  .moreMenu {
+    gap: 0;
+    padding: var(--space-1);
+  }
+}
+
+@container editor-panel (max-width: 46rem) {
+  .toolbar,
+  .toolbar.fullWorkspaceToolbar {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+
+  .toolbarGroup {
+    flex-wrap: wrap;
+  }
+}
+
+@container editor-panel (max-width: 40rem) {
+  .fontControlsGroup {
+    flex: 1 1 100%;
   }
 }
 
@@ -176,7 +239,7 @@
 .prose {
   font-family: var(--font-serif);
   font-size: 1.0625rem;
-  line-height: var(--line-height-relaxed);
+  line-height: 1.15;
   color: var(--color-text-primary);
   outline: none;
 }

@@ -1,6 +1,6 @@
 # Prompt.md — PaperLens Product & Build Specification
 
-GitHub Repository Url : https://github.com/minkhantthu2692-gif/PaperLens.git
+GitHub Repository Url : https://github.com/minkhantthu2692-gif/PaperLens-v2.git
 
 ## 1. Project goal
 

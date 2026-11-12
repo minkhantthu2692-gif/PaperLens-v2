@@ -3,7 +3,7 @@
 > Repository-wide instructions for AI coding agents and contributors.
 > This file defines how to work in the codebase. `Prompt.md` defines the product requirements.
 
-GitHub Repository Url : https://github.com/minkhantthu2692-gif/PaperLens.git
+GitHub Repository Url : https://github.com/minkhantthu2692-gif/PaperLens-v2.git
 
 ## 1. Product context
 
@@ -192,3 +192,37 @@ These are explicit product-owner decisions and override earlier mockup assumptio
 - Assistant output should offer relevant actions such as copy, insert, replace/accept, or retry, without silently changing the document.
 - Responsive behavior may adapt the two-panel desktop workspace to tabs/stacked panels on narrow screens, but must preserve access to both Source and Editor and avoid cramped unusable panes.
 - The supplied reference mockup image is a visual guide, not a source of additional product functionality. Implement the written requirements; do not copy incidental labels, invented content, or decorative details from the image as hard requirements.
+
+## 14. GitHub repository safety
+
+Two remotes are configured:
+
+- `origin` → https://github.com/minkhantthu2692-gif/PaperLens.git (original PaperLens repository)
+- `v2` → https://github.com/minkhantthu2692-gif/PaperLens-v2.git (authorized destination)
+
+Strict rules for all work on this repository:
+
+- The **only** authorized push destination is `v2` (PaperLens-v2).
+- Never push to `origin`.
+- Never modify the original PaperLens repository.
+- Never change remote URLs or Git remote configurations.
+- Never force-push.
+- Never rewrite existing commit history.
+- Never reset or discard existing changes.
+- Never run `git clean`.
+- Never overwrite unrelated branches.
+- Never remove existing files unless their removal is explicitly justified and necessary.
+
+Before any Git operations:
+
+1. Inspect `git remote -v`.
+2. Inspect the current branch and working tree (`git status`, `git branch -a`).
+3. Inspect recent commit history (`git log --oneline`).
+4. Fetch the `v2` remote (`git fetch v2`).
+5. Compare local HEAD with `v2/main`.
+6. Identify all modified, staged, untracked, and potentially ignored files.
+
+Create a safe backup branch before performing any Git operations that could risk existing work.
+Preserve all existing local changes.
+
+Push explicitly to `v2`: `git push v2 HEAD:main`. Never use an ambiguous `git push`.

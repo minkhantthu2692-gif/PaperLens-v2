@@ -7,6 +7,7 @@ import {
   ExternalHyperlink,
   HeadingLevel,
   LevelFormat,
+  LineRuleType,
   Packer,
   Paragraph,
   TextRun,
@@ -15,6 +16,12 @@ import {
   type IRunOptions,
   type ParagraphChild,
 } from 'docx';
+import {
+  colorToDocxHex,
+  docxFontFamily,
+  fontSizeToDocxHalfPoints,
+  lineSpacingValue,
+} from '@/features/editor/formatting';
 
 type Mark = NonNullable<JSONContent['marks']>[number];
 type Heading = (typeof HeadingLevel)[keyof typeof HeadingLevel];
@@ -61,6 +68,30 @@ function safeLinkHref(marks: readonly Mark[]): string | null {
 
 function createRun(node: JSONContent, marks: readonly Mark[]): ParagraphChild {
   let options: IRunOptions = { text: node.text ?? '' };
+  const textStyle = marks.find((mark) => mark.type === 'textStyle');
+  const fontFamily = textStyle ? docxFontFamily(markAttribute(textStyle, 'fontFamily')) : null;
+  const fontSize = textStyle
+    ? fontSizeToDocxHalfPoints(markAttribute(textStyle, 'fontSize'))
+    : null;
+  const textColor = textStyle ? colorToDocxHex(markAttribute(textStyle, 'color')) : null;
+  const highlight = marks.find((mark) => mark.type === 'highlight');
+  const highlightColor = highlight ? colorToDocxHex(markAttribute(highlight, 'color')) : null;
+
+  if (fontFamily) {
+    options = {
+      ...options,
+      font: { ascii: fontFamily, cs: fontFamily, eastAsia: fontFamily, hAnsi: fontFamily },
+    };
+  }
+  if (fontSize) {
+    options = { ...options, size: fontSize };
+  }
+  if (textColor) {
+    options = { ...options, color: textColor };
+  }
+  if (highlightColor) {
+    options = { ...options, shading: { fill: highlightColor } };
+  }
 
   if (hasMark(marks, 'bold')) {
     options = { ...options, bold: true };
@@ -157,6 +188,13 @@ function createParagraph(node: JSONContent, context: ParagraphContext = {}): Par
   const alignment = alignmentFor(node);
   if (alignment) {
     options = { ...options, alignment };
+  }
+  const lineSpacing = lineSpacingValue(node.attrs?.['lineSpacing']);
+  if (lineSpacing) {
+    options = {
+      ...options,
+      spacing: { line: Math.round(Number(lineSpacing) * 240), lineRule: LineRuleType.AUTO },
+    };
   }
 
   if (context.list) {
@@ -326,19 +364,57 @@ export function buildDocxDocument(title: string, content: JSONContent): Document
     styles: {
       default: {
         document: {
-          run: { font: 'Georgia', size: 22 },
+          run: {
+            font: {
+              ascii: 'Georgia',
+              cs: 'Noto Sans Myanmar',
+              eastAsia: 'Noto Serif Myanmar',
+              hAnsi: 'Georgia',
+            },
+            size: 22,
+          },
           paragraph: { spacing: { line: 276, after: 160 } },
         },
         heading1: {
-          run: { font: 'Georgia', size: 36, bold: true, color: '1F2937' },
+          run: {
+            font: {
+              ascii: 'Georgia',
+              cs: 'Noto Sans Myanmar',
+              eastAsia: 'Noto Serif Myanmar',
+              hAnsi: 'Georgia',
+            },
+            size: 36,
+            bold: true,
+            color: '1F2937',
+          },
           paragraph: { spacing: { before: 320, after: 160 } },
         },
         heading2: {
-          run: { font: 'Georgia', size: 30, bold: true, color: '1F2937' },
+          run: {
+            font: {
+              ascii: 'Georgia',
+              cs: 'Noto Sans Myanmar',
+              eastAsia: 'Noto Serif Myanmar',
+              hAnsi: 'Georgia',
+            },
+            size: 30,
+            bold: true,
+            color: '1F2937',
+          },
           paragraph: { spacing: { before: 280, after: 140 } },
         },
         heading3: {
-          run: { font: 'Georgia', size: 26, bold: true, color: '1F2937' },
+          run: {
+            font: {
+              ascii: 'Georgia',
+              cs: 'Noto Sans Myanmar',
+              eastAsia: 'Noto Serif Myanmar',
+              hAnsi: 'Georgia',
+            },
+            size: 26,
+            bold: true,
+            color: '1F2937',
+          },
           paragraph: { spacing: { before: 240, after: 120 } },
         },
         hyperlink: {

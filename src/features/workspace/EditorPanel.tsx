@@ -13,10 +13,12 @@ import {
   AlignLeft,
   AlignRight,
   Bold,
+  Eraser,
   Italic,
   Link2,
   List,
   ListOrdered,
+  MoreHorizontal,
   PenLine,
   Quote,
   Redo2,
@@ -35,7 +37,24 @@ import { getParagraphAlignment, type ParagraphAlignment } from '@/domain/paragra
 import { countWords, normalizeLinkHref } from '@/lib/format';
 import { saveEditorContent } from '@/services/storage/documents';
 import { createEditorExtensions } from '@/features/editor/extensions';
+import {
+  colorInputValue,
+  cssFontFamily,
+  fontFamilyOption,
+  fontSizeInputValue,
+  getLineSpacing,
+  lineSpacingValue,
+  setHighlightColor,
+  setLineSpacing,
+  setTextStyle,
+} from '@/features/editor/formatting';
+import {
+  ColorControl,
+  FontFamilyControl,
+  FontSizeControl,
+} from '@/features/editor/FormattingInputs';
 import { FindReplaceBar } from '@/features/editor/FindReplaceBar';
+import { SelectionToolbar } from '@/features/editor/SelectionToolbar';
 import styles from './EditorPanel.module.css';
 
 export type SaveState = 'saved' | 'saving' | 'error';
@@ -84,8 +103,12 @@ export function EditorPanel({
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchReplace, setSearchReplace] = useState(false);
   const [searchFocusSignal, setSearchFocusSignal] = useState(0);
+  const [moreFormattingOpen, setMoreFormattingOpen] = useState(false);
+  const [, setToolbarRevision] = useState(0);
   const sectionRef = useRef<HTMLElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const moreFormattingRef = useRef<HTMLDivElement>(null);
   const saveTimerRef = useRef<number | undefined>(undefined);
   const pendingRef = useRef<EditorSnapshot | null>(null);
   const unsavedRef = useRef(false);
@@ -143,6 +166,34 @@ export function EditorPanel({
   });
 
   useEffect(() => {
+    if (!editor) {
+      return;
+    }
+    const refreshToolbar = () => setToolbarRevision((revision) => revision + 1);
+    editor.on('transaction', refreshToolbar);
+    editor.on('selectionUpdate', refreshToolbar);
+    return () => {
+      editor.off('transaction', refreshToolbar);
+      editor.off('selectionUpdate', refreshToolbar);
+    };
+  }, [editor]);
+
+  useEffect(() => {
+    const closeMoreFormatting = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+      if (toolbarRef.current?.contains(target) || moreFormattingRef.current?.contains(target)) {
+        return;
+      }
+      setMoreFormattingOpen(false);
+    };
+    document.addEventListener('pointerdown', closeMoreFormatting);
+    return () => document.removeEventListener('pointerdown', closeMoreFormatting);
+  }, []);
+
+  useEffect(() => {
     onEditorReady(editor ?? null);
     if (editor) {
       const text = editor.getText({ blockSeparator: '\n\n' });
@@ -190,6 +241,13 @@ export function EditorPanel({
   const alignmentNode = editor.isActive('heading') ? 'heading' : 'paragraph';
   const currentAlignment = getParagraphAlignment(editor.getAttributes(alignmentNode).textAlign);
   const alignmentIsActive = (alignment: ParagraphAlignment) => currentAlignment === alignment;
+  const textStyleAttributes = editor.getAttributes('textStyle');
+  const fontFamily = fontFamilyOption(textStyleAttributes['fontFamily']);
+  const fontSize = fontSizeInputValue(textStyleAttributes['fontSize']);
+  const textColor = colorInputValue(textStyleAttributes['color'], '#1f2937');
+  const highlightAttributes = editor.getAttributes('highlight');
+  const highlightColor = colorInputValue(highlightAttributes['color'], '#ffff00');
+  const lineSpacing = getLineSpacing(editor);
 
   const openLinkDialog = () => {
     setLinkUrl(editor.getAttributes('link').href ?? '');
@@ -247,6 +305,12 @@ export function EditorPanel({
     if (event.key === 'Escape' && searchOpen && !modalOpen) {
       event.preventDefault();
       setSearchOpen(false);
+      return;
+    }
+
+    if (event.key === 'Escape' && moreFormattingOpen) {
+      event.preventDefault();
+      setMoreFormattingOpen(false);
     }
   };
 
@@ -262,253 +326,333 @@ export function EditorPanel({
           <PenLine size={16} aria-hidden="true" />
           {panelTitle ?? <span>{t('workspace.editor')}</span>}
         </div>
-        {headerActions ? (
-          <div
-            className={styles.headerActions}
-            role="group"
-            aria-label={t('workspace.editorActions')}
+        <div
+          className={styles.headerActions}
+          role="group"
+          aria-label={t('workspace.editorActions')}
+        >
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            className={searchOpen ? styles.active : undefined}
+            onClick={() => openSearch(false)}
+            aria-label={t('editor.find')}
+            title={t('editor.find')}
+            aria-pressed={searchOpen}
           >
-            {headerActions}
-          </div>
-        ) : null}
+            <Search size={16} aria-hidden="true" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            onClick={openAiAssistant}
+            aria-label={t('editor.aiAssistant')}
+            title={t('editor.aiAssistant')}
+          >
+            <Sparkles size={16} aria-hidden="true" />
+          </Button>
+          {headerActions}
+        </div>
       </header>
 
       <div
+        ref={toolbarRef}
         className={`${styles.toolbar} ${fullWorkspace ? styles.fullWorkspaceToolbar : ''}`}
         role="toolbar"
         aria-label={t('editor.label')}
+        onMouseDown={(event) => {
+          if (event.target instanceof Element && event.target.closest('button')) {
+            event.preventDefault();
+          }
+        }}
       >
-        <Button
-          variant="ghost"
-          size="sm"
-          iconOnly
-          onClick={() => editor.chain().focus().undo().run()}
-          disabled={!editor.can().undo()}
-          aria-label={t('editor.undo')}
-          title={t('editor.undo')}
-        >
-          <Undo2 size={16} aria-hidden="true" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          iconOnly
-          onClick={() => editor.chain().focus().redo().run()}
-          disabled={!editor.can().redo()}
-          aria-label={t('editor.redo')}
-          title={t('editor.redo')}
-        >
-          <Redo2 size={16} aria-hidden="true" />
-        </Button>
+        <div className={styles.toolbarGroup}>
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            onClick={() => editor.chain().focus().undo().run()}
+            disabled={!editor.can().undo()}
+            aria-label={t('editor.undo')}
+            title={t('editor.undo')}
+          >
+            <Undo2 size={16} aria-hidden="true" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            onClick={() => editor.chain().focus().redo().run()}
+            disabled={!editor.can().redo()}
+            aria-label={t('editor.redo')}
+            title={t('editor.redo')}
+          >
+            <Redo2 size={16} aria-hidden="true" />
+          </Button>
+        </div>
 
         <span className={styles.divider} aria-hidden="true" />
 
-        <select
-          className={styles.select}
-          value={headingValue}
-          aria-label={t('editor.paragraph')}
-          onChange={(event) => {
-            const value = event.target.value;
-            if (value === 'paragraph') {
-              editor.chain().focus().setParagraph().run();
-            } else {
-              editor
-                .chain()
-                .focus()
-                .toggleHeading({ level: Number(value) as 1 | 2 | 3 })
-                .run();
+        <div className={`${styles.toolbarGroup} ${styles.fontControlsGroup}`}>
+          <select
+            className={styles.select}
+            value={headingValue}
+            aria-label={t('editor.paragraph')}
+            onChange={(event) => {
+              const value = event.target.value;
+              if (value === 'paragraph') {
+                editor.chain().focus().setParagraph().run();
+              } else {
+                editor
+                  .chain()
+                  .focus()
+                  .toggleHeading({ level: Number(value) as 1 | 2 | 3 })
+                  .run();
+              }
+            }}
+          >
+            <option value="paragraph">{t('editor.paragraph')}</option>
+            <option value="1">{t('editor.heading1')}</option>
+            <option value="2">{t('editor.heading2')}</option>
+            <option value="3">{t('editor.heading3')}</option>
+          </select>
+          <FontFamilyControl
+            value={fontFamily}
+            label={t('editor.fontFamily')}
+            onChange={(value) => setTextStyle(editor, { fontFamily: cssFontFamily(value) })}
+          />
+          <FontSizeControl
+            value={fontSize}
+            label={t('editor.fontSize')}
+            decreaseLabel={t('editor.decreaseFontSize')}
+            increaseLabel={t('editor.increaseFontSize')}
+            onChange={(size) => setTextStyle(editor, { fontSize: `${size}px` })}
+            showSteps
+          />
+        </div>
+
+        <span className={styles.divider} aria-hidden="true" />
+
+        <div className={styles.toolbarGroup}>
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            className={editor.isActive('bold') ? styles.active : undefined}
+            onClick={() => editor.chain().focus().toggleBold().run()}
+            aria-label={t('editor.bold')}
+            title={t('editor.bold')}
+            aria-pressed={editor.isActive('bold')}
+          >
+            <Bold size={16} aria-hidden="true" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            className={editor.isActive('italic') ? styles.active : undefined}
+            onClick={() => editor.chain().focus().toggleItalic().run()}
+            aria-label={t('editor.italic')}
+            title={t('editor.italic')}
+            aria-pressed={editor.isActive('italic')}
+          >
+            <Italic size={16} aria-hidden="true" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            className={editor.isActive('underline') ? styles.active : undefined}
+            onClick={() => editor.chain().focus().toggleUnderline().run()}
+            aria-label={t('editor.underline')}
+            title={t('editor.underline')}
+            aria-pressed={editor.isActive('underline')}
+          >
+            <UnderlineIcon size={16} aria-hidden="true" />
+          </Button>
+          <ColorControl
+            value={textColor}
+            label={t('editor.textColor')}
+            onChange={(color) => setTextStyle(editor, { color })}
+          />
+          <ColorControl
+            value={highlightColor}
+            label={t('editor.highlightColor')}
+            onChange={(color) => setHighlightColor(editor, color)}
+            highlight
+          />
+        </div>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          className={moreFormattingOpen ? styles.active : undefined}
+          onClick={() => setMoreFormattingOpen((value) => !value)}
+          aria-label={t('editor.moreFormatting')}
+          title={t('editor.moreFormatting')}
+          aria-expanded={moreFormattingOpen}
+          aria-controls="editor-secondary-formatting-controls"
+        >
+          <MoreHorizontal size={16} aria-hidden="true" />
+        </Button>
+      </div>
+
+      {moreFormattingOpen ? (
+        <div
+          ref={moreFormattingRef}
+          id="editor-secondary-formatting-controls"
+          className={styles.moreMenu}
+          role="group"
+          aria-label={t('editor.moreFormatting')}
+          onMouseDown={(event) => {
+            if (event.target instanceof Element && event.target.closest('button')) {
+              event.preventDefault();
             }
           }}
         >
-          <option value="paragraph">{t('editor.paragraph')}</option>
-          <option value="1">{t('editor.heading1')}</option>
-          <option value="2">{t('editor.heading2')}</option>
-          <option value="3">{t('editor.heading3')}</option>
-        </select>
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            className={editor.isActive('strike') ? styles.active : undefined}
+            onClick={() => editor.chain().focus().toggleStrike().run()}
+            aria-label={t('editor.strike')}
+            title={t('editor.strike')}
+            aria-pressed={editor.isActive('strike')}
+          >
+            <Strikethrough size={16} aria-hidden="true" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            className={linkActive ? styles.active : undefined}
+            onClick={openLinkDialog}
+            disabled={!canEditLink}
+            aria-label={linkActive ? t('editor.linkEdit') : t('editor.linkAdd')}
+            title={linkActive ? t('editor.linkEdit') : t('editor.linkAdd')}
+            aria-pressed={linkActive}
+          >
+            <Link2 size={16} aria-hidden="true" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            className={editor.isActive('bulletList') ? styles.active : undefined}
+            onClick={() => editor.chain().focus().toggleBulletList().run()}
+            aria-label={t('editor.bulletList')}
+            title={t('editor.bulletList')}
+            aria-pressed={editor.isActive('bulletList')}
+          >
+            <List size={16} aria-hidden="true" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            className={editor.isActive('orderedList') ? styles.active : undefined}
+            onClick={() => editor.chain().focus().toggleOrderedList().run()}
+            aria-label={t('editor.orderedList')}
+            title={t('editor.orderedList')}
+            aria-pressed={editor.isActive('orderedList')}
+          >
+            <ListOrdered size={16} aria-hidden="true" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            className={editor.isActive('blockquote') ? styles.active : undefined}
+            onClick={() => editor.chain().focus().toggleBlockquote().run()}
+            aria-label={t('editor.blockquote')}
+            title={t('editor.blockquote')}
+            aria-pressed={editor.isActive('blockquote')}
+          >
+            <Quote size={16} aria-hidden="true" />
+          </Button>
+          <span className={styles.divider} aria-hidden="true" />
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            className={alignmentIsActive('left') ? styles.active : undefined}
+            onClick={() => editor.chain().focus().setTextAlign('left').run()}
+            aria-label={t('editor.alignLeft')}
+            title={t('editor.alignLeft')}
+            aria-pressed={alignmentIsActive('left')}
+          >
+            <AlignLeft size={16} aria-hidden="true" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            className={alignmentIsActive('center') ? styles.active : undefined}
+            onClick={() => editor.chain().focus().setTextAlign('center').run()}
+            aria-label={t('editor.alignCenter')}
+            title={t('editor.alignCenter')}
+            aria-pressed={alignmentIsActive('center')}
+          >
+            <AlignCenter size={16} aria-hidden="true" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            className={alignmentIsActive('right') ? styles.active : undefined}
+            onClick={() => editor.chain().focus().setTextAlign('right').run()}
+            aria-label={t('editor.alignRight')}
+            title={t('editor.alignRight')}
+            aria-pressed={alignmentIsActive('right')}
+          >
+            <AlignRight size={16} aria-hidden="true" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            className={alignmentIsActive('justify') ? styles.active : undefined}
+            onClick={() => editor.chain().focus().setTextAlign('justify').run()}
+            aria-label={t('editor.alignJustify')}
+            title={t('editor.alignJustify')}
+            aria-pressed={alignmentIsActive('justify')}
+          >
+            <AlignJustify size={16} aria-hidden="true" />
+          </Button>
+          <label className={styles.lineSpacingLabel}>
+            {t('editor.lineSpacing')}
+            <select
+              className={styles.select}
+              value={lineSpacing ?? ''}
+              aria-label={t('editor.lineSpacing')}
+              onChange={(event) => setLineSpacing(editor, lineSpacingValue(event.target.value))}
+            >
+              <option value="">{t('editor.lineSpacingDefault')}</option>
+              <option value="1">1.0</option>
+              <option value="1.15">1.15</option>
+              <option value="1.5">1.5</option>
+              <option value="2">2.0</option>
+            </select>
+          </label>
+          <span className={styles.divider} aria-hidden="true" />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => editor.chain().focus().unsetAllMarks().run()}
+            aria-label={t('editor.clearFormatting')}
+            title={t('editor.clearFormatting')}
+          >
+            <Eraser size={16} aria-hidden="true" />
+            {t('editor.clearFormatting')}
+          </Button>
+        </div>
+      ) : null}
 
-        <span className={styles.divider} aria-hidden="true" />
-
-        <Button
-          variant="ghost"
-          size="sm"
-          iconOnly
-          className={editor.isActive('bold') ? styles.active : undefined}
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          aria-label={t('editor.bold')}
-          title={t('editor.bold')}
-          aria-pressed={editor.isActive('bold')}
-        >
-          <Bold size={16} aria-hidden="true" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          iconOnly
-          className={editor.isActive('italic') ? styles.active : undefined}
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          aria-label={t('editor.italic')}
-          title={t('editor.italic')}
-          aria-pressed={editor.isActive('italic')}
-        >
-          <Italic size={16} aria-hidden="true" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          iconOnly
-          className={editor.isActive('underline') ? styles.active : undefined}
-          onClick={() => editor.chain().focus().toggleUnderline().run()}
-          aria-label={t('editor.underline')}
-          title={t('editor.underline')}
-          aria-pressed={editor.isActive('underline')}
-        >
-          <UnderlineIcon size={16} aria-hidden="true" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          iconOnly
-          className={editor.isActive('strike') ? styles.active : undefined}
-          onClick={() => editor.chain().focus().toggleStrike().run()}
-          aria-label={t('editor.strike')}
-          title={t('editor.strike')}
-          aria-pressed={editor.isActive('strike')}
-        >
-          <Strikethrough size={16} aria-hidden="true" />
-        </Button>
-
-        <Button
-          variant="ghost"
-          size="sm"
-          iconOnly
-          className={linkActive ? styles.active : undefined}
-          onClick={openLinkDialog}
-          disabled={!canEditLink}
-          aria-label={linkActive ? t('editor.linkEdit') : t('editor.linkAdd')}
-          title={linkActive ? t('editor.linkEdit') : t('editor.linkAdd')}
-          aria-pressed={linkActive}
-        >
-          <Link2 size={16} aria-hidden="true" />
-        </Button>
-
-        <span className={styles.divider} aria-hidden="true" />
-
-        <Button
-          variant="ghost"
-          size="sm"
-          iconOnly
-          className={editor.isActive('bulletList') ? styles.active : undefined}
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          aria-label={t('editor.bulletList')}
-          title={t('editor.bulletList')}
-          aria-pressed={editor.isActive('bulletList')}
-        >
-          <List size={16} aria-hidden="true" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          iconOnly
-          className={editor.isActive('orderedList') ? styles.active : undefined}
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          aria-label={t('editor.orderedList')}
-          title={t('editor.orderedList')}
-          aria-pressed={editor.isActive('orderedList')}
-        >
-          <ListOrdered size={16} aria-hidden="true" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          iconOnly
-          className={editor.isActive('blockquote') ? styles.active : undefined}
-          onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          aria-label={t('editor.blockquote')}
-          title={t('editor.blockquote')}
-          aria-pressed={editor.isActive('blockquote')}
-        >
-          <Quote size={16} aria-hidden="true" />
-        </Button>
-
-        <span className={styles.divider} aria-hidden="true" />
-
-        <Button
-          variant="ghost"
-          size="sm"
-          iconOnly
-          className={alignmentIsActive('left') ? styles.active : undefined}
-          onClick={() => editor.chain().focus().setTextAlign('left').run()}
-          aria-label={t('editor.alignLeft')}
-          title={t('editor.alignLeft')}
-          aria-pressed={alignmentIsActive('left')}
-        >
-          <AlignLeft size={16} aria-hidden="true" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          iconOnly
-          className={alignmentIsActive('center') ? styles.active : undefined}
-          onClick={() => editor.chain().focus().setTextAlign('center').run()}
-          aria-label={t('editor.alignCenter')}
-          title={t('editor.alignCenter')}
-          aria-pressed={alignmentIsActive('center')}
-        >
-          <AlignCenter size={16} aria-hidden="true" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          iconOnly
-          className={alignmentIsActive('right') ? styles.active : undefined}
-          onClick={() => editor.chain().focus().setTextAlign('right').run()}
-          aria-label={t('editor.alignRight')}
-          title={t('editor.alignRight')}
-          aria-pressed={alignmentIsActive('right')}
-        >
-          <AlignRight size={16} aria-hidden="true" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          iconOnly
-          className={alignmentIsActive('justify') ? styles.active : undefined}
-          onClick={() => editor.chain().focus().setTextAlign('justify').run()}
-          aria-label={t('editor.alignJustify')}
-          title={t('editor.alignJustify')}
-          aria-pressed={alignmentIsActive('justify')}
-        >
-          <AlignJustify size={16} aria-hidden="true" />
-        </Button>
-
-        <span className={styles.divider} aria-hidden="true" />
-
-        <Button
-          variant="ghost"
-          size="sm"
-          iconOnly
-          className={searchOpen ? styles.active : undefined}
-          onClick={() => openSearch(false)}
-          aria-label={t('editor.find')}
-          title={t('editor.find')}
-          aria-pressed={searchOpen}
-        >
-          <Search size={16} aria-hidden="true" />
-        </Button>
-
-        <span className={styles.divider} aria-hidden="true" />
-
-        <Button
-          variant="ghost"
-          size="sm"
-          iconOnly
-          onClick={openAiAssistant}
-          aria-label={t('editor.aiAssistant')}
-          title={t('editor.aiAssistant')}
-        >
-          <Sparkles size={16} aria-hidden="true" />
-        </Button>
-      </div>
+      <SelectionToolbar editor={editor} />
 
       <div className={styles.scroll} ref={scrollRef}>
         {searchOpen ? (

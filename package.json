@@ -26,6 +26,7 @@
     "ocr:assets": "node scripts/sync-ocr-assets.mjs"
   },
   "dependencies": {
+    "@tiptap/core": "^2.27.3",
     "@tiptap/extension-link": "^2.27.3",
     "@tiptap/extension-placeholder": "^2.27.3",
     "@tiptap/extension-text-align": "^2.27.3",

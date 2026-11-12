@@ -157,6 +157,7 @@ describe('Editor find and replace', () => {
     if (!editor) {
       throw new Error('Editor did not initialize');
     }
+    editor.view.coordsAtPos = () => ({ left: 0, right: 0, top: 0, bottom: 0 });
     fireEvent.keyDown(panel(), { key: 'h', ctrlKey: true });
 
     await screen.findByRole('search', { name: 'Find and replace' });
