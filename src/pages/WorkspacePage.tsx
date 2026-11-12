@@ -39,6 +39,7 @@ import {
   type EditorSelectionContext,
   type SaveState,
 } from '@/features/workspace/EditorPanel';
+import { SaveStatusIndicator } from '@/features/workspace/SaveStatusIndicator';
 import { SourcePanel } from '@/features/workspace/SourcePanel';
 import {
   exportDocx,
@@ -62,6 +63,9 @@ const SPLIT_STORAGE_KEY = 'paperlens.workspace.split';
 const MIN_SPLIT = 30;
 const MAX_SPLIT = 70;
 const SPLITTER_STEP = 2;
+// The Source panel opens at its narrowest supported width so the Editor keeps
+// as much room as possible. The divider still resizes both panels.
+const DEFAULT_SPLIT = MIN_SPLIT;
 
 function clampSplit(value: number): number {
   return Math.min(MAX_SPLIT, Math.max(MIN_SPLIT, value));
@@ -76,7 +80,7 @@ function readSplit(): number {
   } catch {
     // Fall back to the default split.
   }
-  return 50;
+  return DEFAULT_SPLIT;
 }
 
 type ExportFormat = 'txt' | 'html' | 'docx' | 'pdf';
@@ -538,13 +542,6 @@ export default function WorkspacePage() {
     );
   }
 
-  const saveLabel =
-    saveState === 'error'
-      ? t('workspace.saveError')
-      : saveState === 'saving'
-        ? t('workspace.saving')
-        : t('workspace.saved');
-
   return (
     <div className={clsx(styles.page, isFocusMode && styles.focusMode)}>
       {error ? (
@@ -627,8 +624,6 @@ export default function WorkspacePage() {
           )}
         </div>
 
-        
-
         <div
           className={styles.splitter}
           role="separator"
@@ -644,8 +639,8 @@ export default function WorkspacePage() {
           onPointerCancel={handleSplitterPointerUp}
           onKeyDown={handleSplitterKeyDown}
           onDoubleClick={() => {
-            setSplit(50);
-            persistSplit(50);
+            setSplit(DEFAULT_SPLIT);
+            persistSplit(DEFAULT_SPLIT);
           }}
         />
 
@@ -673,9 +668,7 @@ export default function WorkspacePage() {
                     }
                   }}
                 />
-                <span className={styles.saveState} data-state={saveState} role="status">
-                  {saveLabel}
-                </span>
+                <SaveStatusIndicator state={saveState} />
               </div>
             }
             fullWorkspace={isFocusMode}

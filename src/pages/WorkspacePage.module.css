@@ -17,7 +17,7 @@
 }
 
 .titleInput {
-  width: clamp(6rem, 20vw, 17rem);
+  width: clamp(6rem, 16vw, 13rem);
   min-width: 0;
   padding: var(--space-1) var(--space-2);
   margin-left: calc(var(--space-2) * -1);
@@ -39,20 +39,6 @@
   border-color: var(--color-border-accent);
   outline: 2px solid var(--color-focus-ring);
   outline-offset: 1px;
-}
-
-.saveState {
-  flex: none;
-  overflow: hidden;
-  font-size: var(--font-size-2xs);
-  font-weight: var(--font-weight-regular);
-  color: var(--color-text-tertiary);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.saveState[data-state='error'] {
-  color: var(--color-danger);
 }
 
 .exportWrap {
@@ -260,10 +246,6 @@
 @media (max-width: 48rem) {
   .titleInput {
     width: min(45vw, 12rem);
-  }
-
-  .saveState {
-    display: none;
   }
 
   .mobileTabs {

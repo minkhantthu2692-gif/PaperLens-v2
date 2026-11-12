@@ -112,6 +112,7 @@ export function EditorPanel({
   const saveTimerRef = useRef<number | undefined>(undefined);
   const pendingRef = useRef<EditorSnapshot | null>(null);
   const unsavedRef = useRef(false);
+  const saveSequenceRef = useRef(0);
   const onSaveStateRef = useRef(onSaveStateChange);
   onSaveStateRef.current = onSaveStateChange;
 
@@ -130,14 +131,22 @@ export function EditorPanel({
       return;
     }
     pendingRef.current = null;
+    // Sequence guard: only the most recent write may publish a final status,
+    // so a stale failure can never report an error after a newer save, and a
+    // stale success can never clear an error of a newer failed attempt.
+    const sequence = (saveSequenceRef.current += 1);
     onSaveStateRef.current('saving');
     try {
       await saveEditorContent(documentId, pending);
-      if (!pendingRef.current) {
-        unsavedRef.current = false;
-        onSaveStateRef.current('saved');
+      if (sequence !== saveSequenceRef.current || pendingRef.current) {
+        return;
       }
+      unsavedRef.current = false;
+      onSaveStateRef.current('saved');
     } catch {
+      if (sequence !== saveSequenceRef.current) {
+        return;
+      }
       pendingRef.current ??= pending;
       unsavedRef.current = true;
       onSaveStateRef.current('error');

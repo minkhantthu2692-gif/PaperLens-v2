@@ -1,0 +1,33 @@
+.indicator {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.125rem;
+  height: 1.125rem;
+  color: var(--color-text-tertiary);
+}
+
+.indicator[data-state='saved'] {
+  color: var(--color-success);
+}
+
+.indicator[data-state='error'] {
+  color: var(--color-danger);
+}
+
+.spinner {
+  animation: saveSpinner 900ms linear infinite;
+}
+
+@keyframes saveSpinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}

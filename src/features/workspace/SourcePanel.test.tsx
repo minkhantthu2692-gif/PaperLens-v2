@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import i18n from '@/i18n';
@@ -267,5 +267,67 @@ describe('SourcePanel image viewer', () => {
     expect(handTool).toHaveAttribute('aria-pressed', 'true');
     expect(regionTool).toHaveAttribute('aria-pressed', 'false');
     expect(screen.queryByText('Drag on the page to select a region.')).not.toBeInTheDocument();
+  });
+});
+
+// The metadata popover decodes the image with `new Image()`, which jsdom never
+// loads, so the tests stub the constructor to resolve synchronously.
+class MockDecodingImage {
+  naturalWidth = 640;
+  naturalHeight = 480;
+  onload: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  set src(_value: string) {
+    queueMicrotask(() => this.onload?.());
+  }
+}
+
+class MockBrokenImage {
+  naturalWidth = 0;
+  naturalHeight = 0;
+  onload: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  set src(_value: string) {
+    queueMicrotask(() => this.onerror?.());
+  }
+}
+
+describe('Source info popover', () => {
+  it('opens the metadata of the active source and closes with Escape', async () => {
+    vi.stubGlobal('Image', MockDecodingImage);
+    const user = userEvent.setup();
+    renderPanel();
+
+    const button = screen.getByRole('button', { name: 'Source file details' });
+    expect(screen.queryByRole('dialog', { name: 'Source details' })).toBeNull();
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+    expect(button).toHaveAttribute('aria-haspopup', 'dialog');
+
+    await user.click(button);
+    const dialog = screen.getByRole('dialog', { name: 'Source details' });
+    expect(button).toHaveAttribute('aria-expanded', 'true');
+    expect(within(dialog).getByText('scan.png')).toBeInTheDocument();
+    expect(within(dialog).getByText('PNG image')).toBeInTheDocument();
+    expect(within(dialog).getByText('10 B')).toBeInTheDocument();
+    expect(await within(dialog).findByText('640 × 480 px')).toBeInTheDocument();
+
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog', { name: 'Source details' })).toBeNull();
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('closes on an outside click and reports undecodable dimensions as unavailable', async () => {
+    vi.stubGlobal('Image', MockBrokenImage);
+    const user = userEvent.setup();
+    renderPanel();
+
+    const button = screen.getByRole('button', { name: 'Source file details' });
+    await user.click(button);
+    const dialog = screen.getByRole('dialog', { name: 'Source details' });
+    expect(within(dialog).getByText('scan.png')).toBeInTheDocument();
+    expect(await within(dialog).findByText('Unavailable')).toBeInTheDocument();
+
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByRole('dialog', { name: 'Source details' })).toBeNull();
   });
 });

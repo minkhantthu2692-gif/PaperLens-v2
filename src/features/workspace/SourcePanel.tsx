@@ -20,7 +20,6 @@ import {
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
-import { Info } from 'lucide-react';
 import clsx from 'clsx';
 import { useTranslation } from 'react-i18next';
 import type * as PdfJs from 'pdfjs-dist';
@@ -31,6 +30,7 @@ import { useImageGestures } from '@/hooks/useImageGestures';
 import { downloadBlob, sanitizeFileName } from '@/lib/file';
 import { MAX_TEXT_CHARACTERS } from '@/services/import/fileValidation';
 import styles from './SourcePanel.module.css';
+import { SourceInfoButton } from './SourceInfoButton';
 import { useRegionSelection, type SelectionRect } from './useRegionSelection';
 
 interface SourcePanelProps {
@@ -285,16 +285,8 @@ export function SourcePanel({
         <span className={styles.panelTitle}>
           <KindIcon size={16} aria-hidden="true" />
           <span>{kindLabel}</span>
-      {/* Info button for file details popover */}
-      <Button
-        variant="ghost"
-        size="sm"
-        title={t('workspace.infoTooltip', { defaultValue: 'Info' })}
-      >
-        <Info size={16} aria-hidden="true" />
-      </Button>
         </span>
-        
+        <SourceInfoButton asset={asset} {...(pageCount !== undefined ? { pageCount } : {})} />
       </header>
 
       {asset.mimeType === 'application/pdf' ? (
