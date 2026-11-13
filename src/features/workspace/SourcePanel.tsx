@@ -12,6 +12,10 @@ import {
   Image as ImageIcon,
   Maximize,
   MousePointer2,
+  Ratio,
+  RefreshCw,
+  RotateCcw,
+  RotateCw,
   ScanLine,
   ScanText,
   Sparkles,
@@ -26,6 +30,7 @@ import { useTranslation } from 'react-i18next';
 import type * as PdfJs from 'pdfjs-dist';
 import type { PDFDocumentProxy, PageViewport } from 'pdfjs-dist';
 import { Button } from '@/components/ui/Button';
+import { ToolButton } from '@/components/ui/ToolButton';
 import type { SourceAsset } from '@/domain/document';
 import { useImageGestures } from '@/hooks/useImageGestures';
 import { downloadBlob, sanitizeFileName } from '@/lib/file';
@@ -125,17 +130,50 @@ function wheelZoomFactor(event: WheelEvent, viewportHeight: number): number {
   return Math.exp(-event.deltaY * deltaUnit * 0.0015);
 }
 
-function cropToCanvas(
-  element: HTMLCanvasElement | HTMLImageElement,
-  rect: SelectionRect,
-): HTMLCanvasElement | null {
+/**
+ * Draws the image rotated in memory so a rotated region is cropped exactly as
+ * the user sees it. The original source file is never modified.
+ */
+function rotatedImageCanvas(element: HTMLImageElement, rotation: number): HTMLCanvasElement | null {
   const displayedWidth = element.clientWidth;
   const displayedHeight = element.clientHeight;
+  if (!displayedWidth || !displayedHeight) {
+    return null;
+  }
+  const swapped = rotation % 180 !== 0;
+  const stageWidth = swapped ? displayedHeight : displayedWidth;
+  const stageHeight = swapped ? displayedWidth : displayedHeight;
+  const pixelRatio = element.naturalWidth / displayedWidth;
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(stageWidth * pixelRatio));
+  canvas.height = Math.max(1, Math.round(stageHeight * pixelRatio));
+  const context = canvas.getContext('2d');
+  if (!context) {
+    return null;
+  }
+  context.translate(canvas.width / 2, canvas.height / 2);
+  context.rotate((rotation * Math.PI) / 180);
+  context.drawImage(
+    element,
+    (-displayedWidth * pixelRatio) / 2,
+    (-displayedHeight * pixelRatio) / 2,
+    displayedWidth * pixelRatio,
+    displayedHeight * pixelRatio,
+  );
+  return canvas;
+}
+
+function cropSource(
+  source: CanvasImageSource,
+  sourceWidth: number,
+  sourceHeight: number,
+  displayedWidth: number,
+  displayedHeight: number,
+  rect: SelectionRect,
+): HTMLCanvasElement | null {
   if (!displayedWidth || !displayedHeight || rect.width < 2 || rect.height < 2) {
     return null;
   }
-  const sourceWidth = element instanceof HTMLImageElement ? element.naturalWidth : element.width;
-  const sourceHeight = element instanceof HTMLImageElement ? element.naturalHeight : element.height;
   const scaleX = sourceWidth / displayedWidth;
   const scaleY = sourceHeight / displayedHeight;
 
@@ -147,7 +185,7 @@ function cropToCanvas(
     return null;
   }
   context.drawImage(
-    element,
+    source,
     rect.x * scaleX,
     rect.y * scaleY,
     rect.width * scaleX,
@@ -160,11 +198,36 @@ function cropToCanvas(
   return output;
 }
 
+function cropToCanvas(
+  element: HTMLCanvasElement | HTMLImageElement,
+  rect: SelectionRect,
+  rotation = 0,
+): HTMLCanvasElement | null {
+  if (rotation !== 0 && element instanceof HTMLImageElement) {
+    const rotated = rotatedImageCanvas(element, rotation);
+    if (!rotated) {
+      return null;
+    }
+    return cropSource(rotated, rotated.width, rotated.height, rotated.width, rotated.height, rect);
+  }
+  const sourceWidth = element instanceof HTMLImageElement ? element.naturalWidth : element.width;
+  const sourceHeight = element instanceof HTMLImageElement ? element.naturalHeight : element.height;
+  return cropSource(
+    element,
+    sourceWidth,
+    sourceHeight,
+    element.clientWidth,
+    element.clientHeight,
+    rect,
+  );
+}
+
 async function copyRegion(
   element: HTMLCanvasElement | HTMLImageElement,
   rect: SelectionRect,
+  rotation = 0,
 ): Promise<boolean> {
-  const canvas = cropToCanvas(element, rect);
+  const canvas = cropToCanvas(element, rect, rotation);
   if (!canvas) {
     return false;
   }
@@ -190,8 +253,9 @@ async function copyRegion(
 async function regionToBlob(
   element: HTMLCanvasElement | HTMLImageElement,
   rect: SelectionRect,
+  rotation = 0,
 ): Promise<Blob | null> {
-  const canvas = cropToCanvas(element, rect);
+  const canvas = cropToCanvas(element, rect, rotation);
   if (!canvas) {
     return null;
   }
@@ -202,8 +266,9 @@ function downloadRegion(
   element: HTMLCanvasElement | HTMLImageElement,
   rect: SelectionRect,
   fileName: string,
+  rotation = 0,
 ): boolean {
-  const canvas = cropToCanvas(element, rect);
+  const canvas = cropToCanvas(element, rect, rotation);
   if (!canvas) {
     return false;
   }
@@ -351,6 +416,7 @@ function PdfSource({
   const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1);
   const scaleRef = useRef(scale);
+  const [rotation, setRotation] = useState(0);
   const [fitMode, setFitMode] = useState(true);
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
   const [spans, setSpans] = useState<TextSpan[]>([]);
@@ -439,7 +505,7 @@ function PdfSource({
         setRendering(true);
         setError(false);
         const page = await pdf.getPage(pageNumber);
-        const viewport = page.getViewport({ scale });
+        const viewport = page.getViewport({ scale, rotation });
         const canvas = canvasRef.current;
         if (!canvas || cancelled) {
           return;
@@ -496,7 +562,7 @@ function PdfSource({
       cancelled = true;
       cancelRender?.();
     };
-  }, [pdf, pdfjs, pageNumber, scale, clearSelection]);
+  }, [pdf, pdfjs, pageNumber, scale, rotation, clearSelection]);
 
   useEffect(() => {
     if (!fitMode || !pdf || !viewport.width || !viewport.height) {
@@ -509,7 +575,7 @@ function PdfSource({
         if (cancelled) {
           return;
         }
-        const baseViewport = page.getViewport({ scale: 1 });
+        const baseViewport = page.getViewport({ scale: 1, rotation });
         if (baseViewport.width > 0 && baseViewport.height > 0) {
           const nextScale = calculateFitScale(
             baseViewport.width,
@@ -528,7 +594,7 @@ function PdfSource({
     return () => {
       cancelled = true;
     };
-  }, [fitMode, pdf, pageNumber, viewport]);
+  }, [fitMode, pdf, pageNumber, rotation, viewport]);
 
   useEffect(() => {
     if (!status) {
@@ -632,173 +698,143 @@ function PdfSource({
         {onExit ? (
           <div className={styles.toolbarSection}>
             <div className={styles.toolGroup} aria-label="Navigation">
-              <Button
-                variant="ghost"
-                size="sm"
-                iconOnly
+              <ToolButton
+                icon={<ArrowLeft size={17} />}
+                label={t('workspace.backToDocuments')}
+                labelAlign="start"
                 onClick={onExit}
-                aria-label={t('workspace.backToDocuments')}
-                title={t('workspace.backToDocuments')}
-              >
-                <ArrowLeft size={17} aria-hidden="true" />
-              </Button>
+              />
             </div>
           </div>
         ) : null}
 
         <div className={styles.toolbarSection}>
           <div className={styles.toolGroup} aria-label="Page navigation">
-            <Button
-              variant="ghost"
-              size="sm"
-              iconOnly
+            <ToolButton
+              icon={<ChevronLeft size={17} />}
+              label={t('workspace.previousPage')}
+              labelAlign="start"
               onClick={() => setPageNumber((page) => Math.max(1, page - 1))}
               disabled={pageNumber <= 1}
-              aria-label={t('workspace.previousPage')}
-              title={t('workspace.previousPage')}
-            >
-              <ChevronLeft size={17} aria-hidden="true" />
-            </Button>
+            />
             <span className={styles.pageIndicator}>
               {t('workspace.pageOf', { page: pageNumber, total: numPages || 1 })}
             </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              iconOnly
+            <ToolButton
+              icon={<ChevronRight size={17} />}
+              label={t('workspace.nextPage')}
               onClick={() => {
                 setPageNumber((page) => Math.min(numPages || 1, page + 1));
               }}
               disabled={pageNumber >= (numPages || 1)}
-              aria-label={t('workspace.nextPage')}
-              title={t('workspace.nextPage')}
-            >
-              <ChevronRight size={17} aria-hidden="true" />
-            </Button>
+            />
           </div>
         </div>
 
         <div className={styles.toolbarSection}>
           <div className={styles.toolGroup} aria-label="Zoom controls">
-            <Button
-              variant="ghost"
-              size="sm"
-              iconOnly
+            <ToolButton
+              icon={<ZoomOut size={17} />}
+              label={t('workspace.zoomOut')}
+              labelAlign="start"
               onClick={() => zoomBy(-SCALE_STEP)}
-              aria-label={t('workspace.zoomOut')}
-              title={t('workspace.zoomOut')}
-            >
-              <ZoomOut size={17} aria-hidden="true" />
-            </Button>
+            />
             <span className={styles.percent}>{Math.round(scale * 100)}%</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              iconOnly
+            <ToolButton
+              icon={<ZoomIn size={17} />}
+              label={t('workspace.zoomIn')}
               onClick={() => zoomBy(SCALE_STEP)}
-              aria-label={t('workspace.zoomIn')}
-              title={t('workspace.zoomIn')}
-            >
-              <ZoomIn size={17} aria-hidden="true" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              iconOnly
+            />
+            <ToolButton
+              icon={<Maximize size={16} />}
+              label={t('workspace.fitToView')}
+              pressed={fitMode}
+              active={fitMode}
               onClick={() => {
                 wheelAnchorRef.current = null;
                 setFitMode(true);
               }}
-              aria-label={t('workspace.fitToView')}
-              title={t('workspace.fitToView')}
-              aria-pressed={fitMode}
-            >
-              <Maximize size={16} aria-hidden="true" />
-            </Button>
+            />
+          </div>
+        </div>
+
+        <div className={styles.toolbarSection}>
+          <div className={styles.toolGroup} aria-label="Rotation">
+            <ToolButton
+              icon={<RotateCcw size={17} />}
+              label={t('workspace.rotateLeft')}
+              onClick={() => setRotation((current) => (current + 270) % 360)}
+            />
+            <ToolButton
+              icon={<RotateCw size={17} />}
+              label={t('workspace.rotateRight')}
+              onClick={() => setRotation((current) => (current + 90) % 360)}
+            />
+            <ToolButton
+              icon={<RefreshCw size={16} />}
+              label={t('workspace.resetRotation')}
+              disabled={rotation === 0}
+              onClick={() => setRotation(0)}
+            />
           </div>
         </div>
 
         <div className={styles.toolbarSection}>
           <div className={styles.toolGroup} aria-label="View mode">
-            <Button
-              variant="ghost"
-              size="sm"
-              iconOnly
-              className={mode === 'text' ? styles.active : undefined}
+            <ToolButton
+              icon={<MousePointer2 size={16} />}
+              label={t('workspace.selectText')}
+              pressed={mode === 'text'}
+              active={mode === 'text'}
               onClick={() => setMode('text')}
-              aria-label={t('workspace.selectText')}
-              title={t('workspace.selectText')}
-              aria-pressed={mode === 'text'}
-            >
-              <MousePointer2 size={16} aria-hidden="true" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              iconOnly
-              className={mode === 'pan' ? styles.active : undefined}
+            />
+            <ToolButton
+              icon={<Hand size={17} />}
+              label={t('common.handTool')}
+              pressed={mode === 'pan'}
+              active={mode === 'pan'}
               onClick={() => setMode((current) => (current === 'pan' ? 'text' : 'pan'))}
-              aria-label={t('common.handTool')}
-              title={t('common.handToolHint')}
-              aria-pressed={mode === 'pan'}
-            >
-              <Hand size={17} aria-hidden="true" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              iconOnly
-              className={mode === 'region' ? styles.active : undefined}
+            />
+            <ToolButton
+              icon={<ScanLine size={17} />}
+              label={t('workspace.selectRegion')}
+              pressed={mode === 'region'}
+              active={mode === 'region'}
               onClick={() => {
                 setMode('region');
                 setStatus(null);
               }}
-              aria-label={t('workspace.selectRegion')}
-              title={t('workspace.selectRegion')}
-              aria-pressed={mode === 'region'}
-            >
-              <ScanLine size={17} aria-hidden="true" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              iconOnly
+            />
+            <ToolButton
+              icon={<FileType2 size={16} />}
+              label={t('workspace.toggleThumbnails')}
+              labelAlign="end"
               onClick={() => setThumbnailsOpen((value) => !value)}
-              aria-label={t('workspace.toggleThumbnails')}
-              title={t('workspace.thumbnails')}
               aria-expanded={thumbnailsOpen}
-            >
-              <FileType2 size={16} aria-hidden="true" />
-            </Button>
+            />
           </div>
         </div>
 
         <div className={styles.toolbarSection}>
           <div className={styles.toolGroup} aria-label="Page actions">
-            <Button
-              variant="ghost"
-              size="sm"
+            <ToolButton
+              icon={<FileText size={15} />}
+              label={t('workspace.insertPageText')}
               onClick={() => onInsertText(pageText)}
               disabled={!pageText}
-              title={t('workspace.insertPageText')}
-            >
-              <FileText size={15} aria-hidden="true" />
-              {t('workspace.insertPageText')}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => onOcrPage(pageNumber)}>
-              <ScanText size={15} aria-hidden="true" />
-              {t('workspace.ocrPage')}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
+            />
+            <ToolButton
+              icon={<ScanText size={15} />}
+              label={t('workspace.ocrPage')}
+              onClick={() => onOcrPage(pageNumber)}
+            />
+            <ToolButton
+              icon={<Sparkles size={15} />}
+              label={t('workspace.aiPage')}
+              labelAlign="end"
               onClick={() => onAiText(pageText, t('workspace.aiScopePage', { page: pageNumber }))}
               disabled={!pageText}
-              title={t('workspace.aiPage')}
-            >
-              <Sparkles size={15} aria-hidden="true" />
-              {t('workspace.aiPage')}
-            </Button>
+            />
           </div>
         </div>
       </div>
@@ -995,6 +1031,7 @@ function ImageSource({
   const [url, setUrl] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const zoomRef = useRef(zoom);
+  const [rotation, setRotation] = useState(0);
   const [fitMode, setFitMode] = useState(true);
   const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
@@ -1006,9 +1043,17 @@ function ImageSource({
   const wheelAnchorRef = useRef<ZoomAnchor | null>(null);
   const selection = useRegionSelection(mode === 'region' && !panEnabled);
 
+  const swapped = rotation % 180 !== 0;
+  // A quarter turn swaps the displayed width and height.
+  const contentSize = naturalSize
+    ? swapped
+      ? { width: naturalSize.height, height: naturalSize.width }
+      : naturalSize
+    : null;
+
   // Fit the whole image inside the viewer, never upscaling beyond 100%.
-  const fitScale = naturalSize
-    ? calculateFitScale(naturalSize.width, naturalSize.height, viewport.width, viewport.height)
+  const fitScale = contentSize
+    ? calculateFitScale(contentSize.width, contentSize.height, viewport.width, viewport.height)
     : 1;
   const minImageScale = Math.min(MIN_SCALE, fitScale);
   const clampImageScale = (value: number) => Math.min(MAX_SCALE, Math.max(minImageScale, value));
@@ -1054,6 +1099,7 @@ function ImageSource({
     const objectUrl = URL.createObjectURL(asset.blob);
     setUrl(objectUrl);
     setNaturalSize(null);
+    setRotation(0);
     setFitMode(true);
     wheelAnchorRef.current = null;
     zoomRef.current = 1;
@@ -1156,7 +1202,7 @@ function ImageSource({
     if (!image || !selection.rect) {
       return;
     }
-    const blob = await regionToBlob(image, selection.rect);
+    const blob = await regionToBlob(image, selection.rect, rotation);
     if (blob) {
       onOcrRegion(blob);
     }
@@ -1167,7 +1213,7 @@ function ImageSource({
     if (!image || !selection.rect) {
       return;
     }
-    const copied = await copyRegion(image, selection.rect);
+    const copied = await copyRegion(image, selection.rect, rotation);
     setStatus(copied ? t('workspace.copied') : t('workspace.copyFailed'));
   };
 
@@ -1177,100 +1223,95 @@ function ImageSource({
         {onExit ? (
           <div className={styles.toolbarSection}>
             <div className={styles.toolGroup} aria-label="Navigation">
-              <Button
-                variant="ghost"
-                size="sm"
-                iconOnly
+              <ToolButton
+                icon={<ArrowLeft size={17} />}
+                label={t('workspace.backToDocuments')}
+                labelAlign="start"
                 onClick={onExit}
-                aria-label={t('workspace.backToDocuments')}
-                title={t('workspace.backToDocuments')}
-              >
-                <ArrowLeft size={17} aria-hidden="true" />
-              </Button>
+              />
             </div>
           </div>
         ) : null}
 
         <div className={styles.toolbarSection}>
           <div className={styles.toolGroup} aria-label="Zoom and view controls">
-            <Button
-              variant="ghost"
-              size="sm"
-              iconOnly
+            <ToolButton
+              icon={<ZoomOut size={17} />}
+              label={t('workspace.zoomOut')}
+              labelAlign="start"
               onClick={() => zoomBy(-0.25)}
-              aria-label={t('workspace.zoomOut')}
-              title={t('workspace.zoomOut')}
-            >
-              <ZoomOut size={17} aria-hidden="true" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className={styles.zoomReset}
-              onClick={actualSize}
-              aria-label={t('workspace.actualSize')}
-              title={t('workspace.actualSize')}
-            >
-              <span className={styles.percent}>{Math.round(zoom * 100)}%</span>
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              iconOnly
+            />
+            <span className={styles.percent}>{Math.round(zoom * 100)}%</span>
+            <ToolButton
+              icon={<ZoomIn size={17} />}
+              label={t('workspace.zoomIn')}
               onClick={() => zoomBy(0.25)}
-              aria-label={t('workspace.zoomIn')}
-              title={t('workspace.zoomIn')}
-            >
-              <ZoomIn size={17} aria-hidden="true" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              iconOnly
+            />
+            <ToolButton
+              icon={<Maximize size={16} />}
+              label={t('workspace.fitToView')}
+              pressed={fitMode}
+              active={fitMode}
               onClick={fitToView}
-              aria-label={t('workspace.fitToView')}
-              title={t('workspace.fitToView')}
-              aria-pressed={fitMode}
-            >
-              <Maximize size={16} aria-hidden="true" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              iconOnly
-              className={panEnabled ? styles.active : undefined}
+            />
+            <ToolButton
+              icon={<Ratio size={16} />}
+              label={t('workspace.actualSize')}
+              onClick={actualSize}
+            />
+            <ToolButton
+              icon={<Hand size={17} />}
+              label={t('common.handTool')}
+              pressed={panEnabled}
+              active={panEnabled}
               onClick={togglePan}
-              aria-label={t('common.handTool')}
-              title={t('common.handToolHint')}
-              aria-pressed={panEnabled}
-            >
-              <Hand size={17} aria-hidden="true" />
-            </Button>
+            />
+          </div>
+        </div>
+
+        <div className={styles.toolbarSection}>
+          <div className={styles.toolGroup} aria-label="Rotation">
+            <ToolButton
+              icon={<RotateCcw size={17} />}
+              label={t('workspace.rotateLeft')}
+              onClick={() => setRotation((current) => (current + 270) % 360)}
+            />
+            <ToolButton
+              icon={<RotateCw size={17} />}
+              label={t('workspace.rotateRight')}
+              onClick={() => setRotation((current) => (current + 90) % 360)}
+            />
+            <ToolButton
+              icon={<RefreshCw size={16} />}
+              label={t('workspace.resetRotation')}
+              disabled={rotation === 0}
+              onClick={() => setRotation(0)}
+            />
           </div>
         </div>
 
         <div className={styles.toolbarSection}>
           <div className={styles.toolGroup} aria-label="Image actions">
             {onRefineImage ? (
-              <Button
-                variant="ghost"
-                size="sm"
+              <ToolButton
+                icon={<Wand2 size={15} />}
+                label={
+                  hasRefinedImage ? t('workspace.refineImageUpdate') : t('workspace.refineImage')
+                }
                 onClick={onRefineImage}
-                title={t('workspace.refineImageHint')}
-              >
-                <Wand2 size={15} aria-hidden="true" />
-                {hasRefinedImage ? t('workspace.refineImageUpdate') : t('workspace.refineImage')}
-              </Button>
+              />
             ) : null}
-            <Button variant="ghost" size="sm" onClick={onOcrImage}>
-              <ScanText size={15} aria-hidden="true" />
-              {t('workspace.ocrImage')}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              iconOnly
-              className={mode === 'region' ? styles.active : undefined}
+            <ToolButton
+              icon={<ScanText size={15} />}
+              label={t('workspace.ocrImage')}
+              onClick={onOcrImage}
+            />
+            <ToolButton
+              icon={<ScanLine size={17} />}
+              label={t('workspace.selectRegion')}
+              labelAlign="end"
+              pressed={mode === 'region'}
+              active={mode === 'region'}
               onClick={() => {
                 if (mode === 'region') {
                   setMode('view');
@@ -1279,12 +1320,7 @@ function ImageSource({
                   setPanEnabled(false);
                 }
               }}
-              aria-label={t('workspace.selectRegion')}
-              title={t('workspace.selectRegion')}
-              aria-pressed={mode === 'region'}
-            >
-              <ScanLine size={17} aria-hidden="true" />
-            </Button>
+            />
           </div>
         </div>
       </div>
@@ -1312,6 +1348,7 @@ function ImageSource({
                       image,
                       selection.rect,
                       `${sanitizeFileName(asset.fileName.replace(/\.[^.]+$/, ''))}-region.png`,
+                      rotation,
                     );
                   }
                 }}
@@ -1352,18 +1389,31 @@ function ImageSource({
         {...gestures.surfaceProps}
       >
         {url ? (
-          <div ref={imageStageRef} className={styles.imageStage}>
+          <div
+            ref={imageStageRef}
+            className={styles.imageStage}
+            style={
+              contentSize
+                ? {
+                    width: `${contentSize.width * zoom}px`,
+                    height: `${contentSize.height * zoom}px`,
+                  }
+                : undefined
+            }
+          >
             <img
               ref={imageRef}
               src={url}
               alt={asset.fileName}
-              className={styles.image}
+              className={clsx(styles.image, rotation !== 0 && styles.imageRotated)}
               draggable={false}
               style={
                 naturalSize
                   ? {
                       width: `${naturalSize.width * zoom}px`,
                       height: `${naturalSize.height * zoom}px`,
+                      transform:
+                        rotation !== 0 ? `translate(-50%, -50%) rotate(${rotation}deg)` : undefined,
                     }
                   : { maxWidth: '100%', height: 'auto' }
               }
@@ -1432,42 +1482,32 @@ function TextSource({
         {onExit ? (
           <div className={styles.toolbarSection}>
             <div className={styles.toolGroup} aria-label="Navigation">
-              <Button
-                variant="ghost"
-                size="sm"
-                iconOnly
+              <ToolButton
+                icon={<ArrowLeft size={17} />}
+                label={t('workspace.backToDocuments')}
+                labelAlign="start"
                 onClick={onExit}
-                aria-label={t('workspace.backToDocuments')}
-                title={t('workspace.backToDocuments')}
-              >
-                <ArrowLeft size={17} aria-hidden="true" />
-              </Button>
+              />
             </div>
           </div>
         ) : null}
 
         <div className={styles.toolbarSection}>
           <div className={styles.toolGroup} aria-label="Document actions">
-            <Button
-              variant="ghost"
-              size="sm"
+            <ToolButton
+              icon={<FileText size={15} />}
+              label={t('workspace.insertAllText')}
+              labelAlign="start"
               onClick={() => onInsertText(text)}
               disabled={!text}
-              title={t('workspace.insertAllText')}
-            >
-              <FileText size={15} aria-hidden="true" />
-              {t('workspace.insertAllText')}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
+            />
+            <ToolButton
+              icon={<Sparkles size={15} />}
+              label={t('workspace.aiDocument')}
+              labelAlign="end"
               onClick={() => onAiText(text, t('workspace.aiScopeDocument'))}
               disabled={!text}
-              title={t('workspace.aiDocument')}
-            >
-              <Sparkles size={15} aria-hidden="true" />
-              {t('workspace.aiDocument')}
-            </Button>
+            />
           </div>
         </div>
       </div>

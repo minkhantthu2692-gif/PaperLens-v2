@@ -1,0 +1,131 @@
+.toolButton {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  color: var(--color-text-secondary);
+  background-color: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  transition:
+    background-color var(--duration-fast) var(--easing-standard),
+    border-color var(--duration-fast) var(--easing-standard),
+    color var(--duration-fast) var(--easing-standard);
+}
+
+.toolButton:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-surface);
+  border-color: var(--color-border-subtle);
+}
+
+.toolButton:active:not(:disabled) {
+  background-color: var(--color-bg-subtle);
+}
+
+.toolButton:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+
+.toolButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.active {
+  color: var(--color-text-accent);
+  background-color: var(--color-bg-accent-soft);
+}
+
+.active:hover:not(:disabled) {
+  color: var(--color-text-accent);
+  background-color: var(--color-bg-accent-soft);
+  border-color: var(--color-border-accent);
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.label {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 50%;
+  z-index: 20;
+  max-width: 12rem;
+  padding: var(--space-1) var(--space-2);
+  overflow: hidden;
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.25;
+  color: var(--color-text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  opacity: 0;
+  transform: translate(-50%, -0.2rem) scaleX(0.94);
+  transform-origin: top center;
+  transition:
+    opacity var(--duration-fast) var(--easing-standard),
+    transform var(--duration-fast) var(--easing-standard);
+}
+
+.start {
+  left: 0;
+  transform: translate(0, -0.2rem) scaleX(0.94);
+  transform-origin: top left;
+}
+
+.end {
+  right: 0;
+  left: auto;
+  transform: translate(0, -0.2rem) scaleX(0.94);
+  transform-origin: top right;
+}
+
+.toolButton:hover .label,
+.toolButton:focus-visible .label {
+  opacity: 1;
+  transform: translate(-50%, 0) scaleX(1);
+}
+
+.toolButton:hover .start,
+.toolButton:focus-visible .start,
+.toolButton:hover .end,
+.toolButton:focus-visible .end {
+  transform: translate(0, 0) scaleX(1);
+}
+
+/*
+ * Touch devices have no hover. A tapped button keeps focus, so the control name
+ * is revealed after the tap instead of never being discoverable.
+ */
+@media (hover: none) {
+  .toolButton:focus .label {
+    opacity: 1;
+    transform: translate(-50%, 0) scaleX(1);
+  }
+
+  .toolButton:focus .start,
+  .toolButton:focus .end {
+    transform: translate(0, 0) scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toolButton,
+  .label {
+    transition: none;
+  }
+}
