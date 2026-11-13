@@ -236,12 +236,24 @@
   box-shadow: var(--shadow-sm);
 }
 
+.editorSurface {
+  /*
+   * Best-effort suppression of the native iOS long-press callout for the
+   * editing surface only. Text stays selectable, editable, and copyable.
+   */
+  -webkit-touch-callout: none;
+}
+
 .prose {
   font-family: var(--font-serif);
   font-size: 1.0625rem;
   line-height: 1.15;
   color: var(--color-text-primary);
   outline: none;
+  /* Keep selection and caret behavior intact while callouts are suppressed. */
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: none;
 }
 
 .prose > * + * {

@@ -214,6 +214,19 @@ describe('Editor paragraph alignment', () => {
   });
 });
 
+describe('Editor native selection suppression', () => {
+  it('cancels the native context menu on the editing surface only', () => {
+    renderEditor();
+    const paragraph = screen.getByText('First paragraph');
+    const toolbar = screen.getByRole('toolbar', { name: 'Document editor' });
+    const fontSizeInput = within(toolbar).getByRole('spinbutton', { name: 'Font size (px)' });
+
+    expect(fireEvent.contextMenu(paragraph)).toBe(false);
+    expect(fireEvent.contextMenu(paragraph, { altKey: true })).toBe(true);
+    expect(fireEvent.contextMenu(fontSizeInput)).toBe(true);
+  });
+});
+
 describe('Editor text formatting', () => {
   it('applies font families, custom sizes, and size stepping to selected text', async () => {
     const user = userEvent.setup();

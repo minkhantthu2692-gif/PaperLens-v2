@@ -1,0 +1,87 @@
+/**
+ * Best-effort suppression of native browser text-selection overlays inside the
+ * editor surface.
+ *
+ * No web API lets a page disable Android's floating selection toolbar, iOS
+ * Safari's callout menu, or the desktop context menu. The editor therefore
+ * combines three narrow measures instead of touching global browser behavior:
+ *
+ * 1. `-webkit-touch-callout: none` in `EditorPanel.module.css` removes the iOS
+ *    callout for the editable surface while leaving text selectable.
+ * 2. `contextmenu` is cancelled only inside the editable surface, so Android's
+ *    long-press menu and the desktop right-click menu cannot cover the custom
+ *    formatting toolbar.
+ * 3. On touch-first devices the custom toolbar is placed below the selection,
+ *    where the native popup (which is drawn above the selection) cannot overlap
+ *    it.
+ */
+
+/** Form controls keep their native menu so paste, spell-check and pickers work. */
+const NATIVE_MENU_EXEMPT_SELECTOR = 'input, textarea, select, [data-native-context-menu]';
+
+export interface EditorContextMenuOptions {
+  /**
+   * Holding Alt opts back into the browser menu, giving keyboard and assistive
+   * technology users a way to reach copy/paste and spell-check actions.
+   */
+  altKey?: boolean;
+}
+
+/** Whether the native context menu should be cancelled for this target. */
+export function shouldSuppressEditorContextMenu(
+  target: EventTarget | null,
+  options: EditorContextMenuOptions = {},
+): boolean {
+  if (options.altKey) {
+    return false;
+  }
+  if (!(target instanceof Element)) {
+    return false;
+  }
+  return target.closest(NATIVE_MENU_EXEMPT_SELECTOR) === null;
+}
+
+/**
+ * Touch-first devices show their native selection toolbar above the selection,
+ * so the custom toolbar prefers the space below it there. Pointer-only devices
+ * keep the original above-first placement.
+ */
+export function prefersSelectionToolbarBelow(): boolean {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return false;
+  }
+  try {
+    return window.matchMedia('(any-pointer: coarse)').matches;
+  } catch {
+    return false;
+  }
+}
+
+export interface SelectionToolbarPlacementInput {
+  /** Top edge of the selection in viewport coordinates. */
+  selectionTop: number;
+  /** Bottom edge of the selection in viewport coordinates. */
+  selectionBottom: number;
+  toolbarHeight: number;
+  viewportHeight: number;
+  preferBelow: boolean;
+  gap?: number;
+}
+
+/** Vertical viewport position for the custom selection toolbar. */
+export function selectionToolbarTop({
+  selectionTop,
+  selectionBottom,
+  toolbarHeight,
+  viewportHeight,
+  preferBelow,
+  gap = 8,
+}: SelectionToolbarPlacementInput): number {
+  const above = selectionTop - toolbarHeight - gap;
+  const below = selectionBottom + gap;
+  const hasRoomAbove = above >= gap;
+  const hasRoomBelow = below + toolbarHeight <= viewportHeight - gap;
+  const placeAbove = preferBelow ? !hasRoomBelow && hasRoomAbove : hasRoomAbove;
+  const top = placeAbove ? above : below;
+  return Math.max(gap, Math.min(viewportHeight - toolbarHeight - gap, top));
+}

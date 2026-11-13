@@ -36,6 +36,7 @@ import {
   setTextStyle,
 } from './formatting';
 import { ColorControl, FontFamilyControl, FontSizeControl } from './FormattingInputs';
+import { prefersSelectionToolbarBelow, selectionToolbarTop } from './nativeSelection';
 import styles from './SelectionToolbar.module.css';
 
 interface ToolbarPosition {
@@ -78,12 +79,15 @@ export function SelectionToolbar({ editor }: { editor: Editor }) {
         8,
         Math.min(window.innerWidth - width - 8, (start.left + end.right) / 2 - width / 2),
       );
-      const above = start.top - height - 8;
-      const below = end.bottom + 8;
-      const top = Math.max(
-        8,
-        Math.min(window.innerHeight - height - 8, above >= 8 ? above : below),
-      );
+      const top = selectionToolbarTop({
+        selectionTop: start.top,
+        selectionBottom: end.bottom,
+        toolbarHeight: height,
+        viewportHeight: window.innerHeight,
+        // On touch devices the native selection toolbar sits above the
+        // selection, so staying below it keeps our toolbar reachable.
+        preferBelow: prefersSelectionToolbarBelow(),
+      });
       setPosition({ left, top });
     } catch {
       setPosition(null);

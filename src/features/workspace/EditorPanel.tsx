@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from 'react';
 import { EditorContent, useEditor, type Editor } from '@tiptap/react';
@@ -55,6 +56,7 @@ import {
 } from '@/features/editor/FormattingInputs';
 import { FindReplaceBar } from '@/features/editor/FindReplaceBar';
 import { SelectionToolbar } from '@/features/editor/SelectionToolbar';
+import { shouldSuppressEditorContextMenu } from '@/features/editor/nativeSelection';
 import styles from './EditorPanel.module.css';
 
 export type SaveState = 'saved' | 'saving' | 'error';
@@ -321,6 +323,13 @@ export function EditorPanel({
       event.preventDefault();
       setMoreFormattingOpen(false);
     }
+  };
+
+  const handleEditorContextMenu = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (!shouldSuppressEditorContextMenu(event.target, { altKey: event.altKey })) {
+      return;
+    }
+    event.preventDefault();
   };
 
   return (
@@ -675,7 +684,9 @@ export function EditorPanel({
           />
         ) : null}
         <div className={styles.paper}>
-          <EditorContent editor={editor} />
+          <div className={styles.editorSurface} onContextMenu={handleEditorContextMenu}>
+            <EditorContent editor={editor} />
+          </div>
         </div>
       </div>
 
