@@ -8,9 +8,9 @@ export interface ToolButtonProps extends Omit<
   ButtonHTMLAttributes<HTMLButtonElement>,
   'children' | 'title'
 > {
-  /** Visible icon only; the label is revealed by expanding the button. */
+  /** Visible icon only; the label is revealed on hover, focus, and touch focus. */
   icon: ReactNode;
-  /** Control name, used for the accessible name and the expanded label. */
+  /** Control name, used for the accessible name and the animated label. */
   label: string;
   /** Highlighted state for toggles such as the hand tool. */
   active?: boolean;
@@ -21,17 +21,9 @@ export interface ToolButtonProps extends Omit<
 }
 
 /**
- * Compact inline-expanding toolbar button.
- *
- * Shows only its icon at rest. On hover or keyboard focus the button expands
- * horizontally to reveal the control title beside its icon. On hover/focus out
- * it smoothly collapses back to icon-only.
- *
- * The label becomes part of the button itself — no floating tooltip or separate
- * overlay. Exactly one label appears during hover/focus.
- *
- * @param icon - The icon to show (lucide-react or similar).
- * @param label - The control name revealed on expand; also used as `aria-label`.
+ * Compact toolbar button. Shows only its icon at rest and reveals the control
+ * name with a short fade/slide animation on hover, keyboard focus, and touch
+ * focus. The label is an overlay so revealing it never reflows the toolbar.
  */
 export const ToolButton = forwardRef<HTMLButtonElement, ToolButtonProps>(function ToolButton(
   {
@@ -56,10 +48,8 @@ export const ToolButton = forwardRef<HTMLButtonElement, ToolButtonProps>(functio
       className={clsx(styles.toolButton, active && styles.active, className)}
       {...props}
     >
-      <span className={styles.iconWrapper}>
-        <span className={styles.icon} aria-hidden="true">
-          {icon}
-        </span>
+      <span className={styles.icon} aria-hidden="true">
+        {icon}
       </span>
       <span className={clsx(styles.label, styles[labelAlign])} aria-hidden="true">
         {label}
