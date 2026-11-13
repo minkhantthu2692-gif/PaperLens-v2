@@ -10,8 +10,12 @@
   border-radius: var(--radius-sm);
 }
 
+.fontFamilySelect {
+  --compact-select-width: 11rem;
+}
+
 .sizeSelect {
-  width: 4.5rem;
+  --compact-select-width: 4.5rem;
 }
 
 .fontSizeControl {
@@ -77,7 +81,12 @@
   }
 
   .sizeSelect {
-    width: 4rem;
+    --compact-select-width: 4rem;
+  }
+
+  .fontFamilySelect {
+    max-width: 9rem;
+    --compact-select-width: 9rem;
   }
 
   .sizeInput {

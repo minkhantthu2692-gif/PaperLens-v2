@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Highlighter, Minus, Palette, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { CompactSelect } from '@/components/ui/CompactSelect';
 import { FONT_FAMILIES, FONT_SIZE_PRESETS } from './formatting';
 import styles from './FormattingInputs.module.css';
 
@@ -14,19 +15,16 @@ export function FontFamilyControl({
   onChange: (value: string) => void;
 }) {
   return (
-    <select
-      className={styles.select}
+    <CompactSelect
+      className={`${styles.select} ${styles.fontFamilySelect}`}
       value={value}
-      aria-label={label}
-      title={label}
-      onChange={(event) => onChange(event.target.value)}
-    >
-      {FONT_FAMILIES.map((family) => (
-        <option key={family.label} value={family.value}>
-          {family.label}
-        </option>
-      ))}
-    </select>
+      ariaLabel={label}
+      options={FONT_FAMILIES.map((family) => ({
+        value: family.value,
+        label: family.label,
+      }))}
+      onChange={onChange}
+    />
   );
 }
 
@@ -35,6 +33,8 @@ export function FontSizeControl({
   label,
   decreaseLabel,
   increaseLabel,
+  decreaseToolbarLabel,
+  increaseToolbarLabel,
   onChange,
   showSteps = false,
 }: {
@@ -42,6 +42,8 @@ export function FontSizeControl({
   label: string;
   decreaseLabel: string;
   increaseLabel: string;
+  decreaseToolbarLabel?: string;
+  increaseToolbarLabel?: string;
   onChange: (value: number) => void;
   showSteps?: boolean;
 }) {
@@ -76,6 +78,13 @@ export function FontSizeControl({
     onChange(size);
     setDraft(String(size));
   };
+  const sizeOptions = FONT_SIZE_PRESETS.map((size) => ({
+    value: String(size),
+    label: String(size),
+  }));
+  if (!sizeOptions.some((option) => option.value === String(value))) {
+    sizeOptions.unshift({ value: String(value), label: String(value) });
+  }
 
   return (
     <div className={styles.fontSizeControl}>
@@ -84,6 +93,7 @@ export function FontSizeControl({
           variant="ghost"
           size="sm"
           iconOnly
+          {...(showSteps ? { toolbarLabel: decreaseToolbarLabel ?? decreaseLabel } : {})}
           onClick={() => applySize(Math.max(8, value - 1))}
           aria-label={decreaseLabel}
           title={decreaseLabel}
@@ -92,24 +102,13 @@ export function FontSizeControl({
           <Minus size={15} aria-hidden="true" />
         </Button>
       ) : null}
-      <select
+      <CompactSelect
         className={`${styles.select} ${styles.sizeSelect}`}
-        value={FONT_SIZE_PRESETS.some((size) => size === value) ? value : ''}
-        aria-label={label}
-        title={label}
-        onChange={(event) => {
-          if (event.target.value) {
-            applySize(Number(event.target.value));
-          }
-        }}
-      >
-        <option value="">{label}</option>
-        {FONT_SIZE_PRESETS.map((size) => (
-          <option key={size} value={size}>
-            {size}
-          </option>
-        ))}
-      </select>
+        value={String(value)}
+        ariaLabel={label}
+        options={sizeOptions}
+        onChange={(size) => applySize(Number(size))}
+      />
       <input
         ref={inputRef}
         className={styles.sizeInput}
@@ -129,6 +128,7 @@ export function FontSizeControl({
           variant="ghost"
           size="sm"
           iconOnly
+          {...(showSteps ? { toolbarLabel: increaseToolbarLabel ?? increaseLabel } : {})}
           onClick={() => applySize(Math.min(96, value + 1))}
           aria-label={increaseLabel}
           title={increaseLabel}

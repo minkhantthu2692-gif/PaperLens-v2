@@ -32,6 +32,7 @@ import {
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
+import { CompactSelect } from '@/components/ui/CompactSelect';
 import { getParagraphAlignment } from '@/domain/paragraphAlignment';
 import {
   canReadClipboard,
@@ -206,7 +207,11 @@ export function SelectionToolbar({
       if (!(target instanceof Node)) {
         return;
       }
-      if (editor.view.dom.contains(target) || menuRef.current?.contains(target)) {
+      if (
+        editor.view.dom.contains(target) ||
+        menuRef.current?.contains(target) ||
+        (target instanceof Element && target.closest('[data-compact-select-menu]'))
+      ) {
         return;
       }
       const { from, to } = editor.state.selection;
@@ -537,21 +542,21 @@ export function SelectionToolbar({
             aria-label={t('editor.moreFormatting')}
           >
             <LabeledRow label={t('editor.lineSpacing')}>
-              <select
+              <CompactSelect
                 className={styles.select}
                 value={spacing ?? ''}
-                aria-label={t('editor.lineSpacing')}
-                title={t('editor.lineSpacing')}
-                onChange={(event) => {
-                  setLineSpacing(editor, lineSpacingValue(event.target.value));
+                ariaLabel={t('editor.lineSpacing')}
+                options={[
+                  { value: '', label: t('editor.lineSpacingDefault') },
+                  { value: '1', label: '1.0' },
+                  { value: '1.15', label: '1.15' },
+                  { value: '1.5', label: '1.5' },
+                  { value: '2', label: '2.0' },
+                ]}
+                onChange={(value) => {
+                  setLineSpacing(editor, lineSpacingValue(value));
                 }}
-              >
-                <option value="">{t('editor.lineSpacingDefault')}</option>
-                <option value="1">1.0</option>
-                <option value="1.15">1.15</option>
-                <option value="1.5">1.5</option>
-                <option value="2">2.0</option>
-              </select>
+              />
             </LabeledRow>
 
             <LabeledRow label={t('editor.list')}>

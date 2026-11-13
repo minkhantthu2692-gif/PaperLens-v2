@@ -49,6 +49,21 @@ beforeEach(async () => {
 });
 
 describe('SourcePanel image viewer', () => {
+  it('reveals descriptive source controls inline without native tooltips', () => {
+    renderPanel();
+
+    const toolbar = screen.getByRole('toolbar', { name: 'Image source' });
+    const zoomIn = within(toolbar).getByRole('button', { name: 'Zoom in' });
+    const sourceDetails = screen.getByRole('button', { name: 'Source file details' });
+
+    expect(zoomIn).toHaveAttribute('data-toolbar-expandable', '');
+    expect(zoomIn).not.toHaveAttribute('title');
+    expect(within(zoomIn).getByText('Zoom in')).toBeInTheDocument();
+    expect(sourceDetails).toHaveAttribute('data-toolbar-expandable', '');
+    expect(sourceDetails).not.toHaveAttribute('title');
+    expect(within(sourceDetails).getByText('Info')).toBeInTheDocument();
+  });
+
   it('pans the zoomed image with the hand tool and restores native behaviour', async () => {
     const user = userEvent.setup();
     renderPanel();
@@ -62,6 +77,8 @@ describe('SourcePanel image viewer', () => {
 
     await user.click(handTool);
     expect(handTool).toHaveAttribute('aria-pressed', 'true');
+    expect(within(handTool).getByText('Pan')).toBeInTheDocument();
+    expect(handTool).not.toHaveAttribute('title');
 
     const surface = screen.getByRole('group', { name: 'Hand tool' });
     expect(surface).toHaveAttribute('tabindex', '0');

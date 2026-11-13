@@ -47,6 +47,19 @@ beforeEach(async () => {
 });
 
 describe('Editor paragraph alignment', () => {
+  it('uses inline labels for toolbar buttons without native tooltips', () => {
+    renderEditor();
+
+    const toolbar = screen.getByRole('toolbar', { name: 'Document editor' });
+    const bold = within(toolbar).getByRole('button', { name: 'Bold' });
+    const more = within(toolbar).getByRole('button', { name: 'More formatting options' });
+
+    expect(bold).toHaveAttribute('data-toolbar-expandable', '');
+    expect(bold).not.toHaveAttribute('title');
+    expect(within(bold).getByText('Bold')).toBeInTheDocument();
+    expect(within(more).getByText('More')).toBeInTheDocument();
+  });
+
   it('places finder and assistant beside translator in the panel header', () => {
     render(
       <EditorPanel
@@ -245,10 +258,8 @@ describe('Editor text formatting', () => {
     });
     act(() => activeEditor.commands.setTextSelection({ from: 1, to: 16 }));
     const toolbar = screen.getByRole('toolbar', { name: 'Document editor' });
-    await user.selectOptions(
-      within(toolbar).getByRole('combobox', { name: 'Font family' }),
-      'Pyidaungsu',
-    );
+    await user.click(within(toolbar).getByRole('combobox', { name: 'Font family' }));
+    await user.click(screen.getByRole('option', { name: 'Pyidaungsu' }));
 
     const sizeInput = within(toolbar).getByRole('spinbutton', { name: 'Font size (px)' });
     await user.clear(sizeInput);
@@ -284,10 +295,8 @@ describe('Editor text formatting', () => {
     const activeEditor = requireEditor(editor);
     act(() => activeEditor.commands.selectAll());
     const toolbar = screen.getByRole('toolbar', { name: 'Document editor' });
-    await user.selectOptions(
-      within(toolbar).getByRole('combobox', { name: 'Font family' }),
-      'Noto Sans Myanmar',
-    );
+    await user.click(within(toolbar).getByRole('combobox', { name: 'Font family' }));
+    await user.click(screen.getByRole('option', { name: 'Noto Sans Myanmar' }));
 
     expect(activeEditor.getText()).toBe('မြန်မာစာ စမ်းသပ်မှု');
     expect(screen.getByText('မြန်မာစာ စမ်းသပ်မှု').closest('span')).toHaveStyle({
@@ -358,7 +367,8 @@ describe('Editor text formatting', () => {
     const toolbar = screen.getByRole('toolbar', { name: 'Document editor' });
     await user.click(within(toolbar).getByRole('button', { name: 'More formatting options' }));
     const more = within(document.getElementById('editor-secondary-formatting-controls')!);
-    await user.selectOptions(more.getByRole('combobox', { name: 'Line spacing' }), '1.5');
+    await user.click(more.getByRole('combobox', { name: 'Line spacing' }));
+    await user.click(screen.getByRole('option', { name: '1.5' }));
 
     expect(screen.getByText('First paragraph').closest('p')).toHaveStyle({ lineHeight: '1.5' });
     expect(screen.getByText('Second paragraph').closest('p')).toHaveStyle({ lineHeight: '1.5' });

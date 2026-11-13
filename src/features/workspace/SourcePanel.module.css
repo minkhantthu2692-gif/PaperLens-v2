@@ -301,11 +301,6 @@
   box-shadow: var(--shadow-md);
 }
 
-.zoomReset {
-  min-width: 2.75rem;
-  font-variant-numeric: tabular-nums;
-}
-
 .textPreview {
   max-width: 48rem;
   padding: clamp(var(--space-5), 4vw, var(--space-8));

@@ -13,6 +13,7 @@ import {
   Maximize,
   MousePointer2,
   ScanLine,
+  ScanEye,
   ScanText,
   Sparkles,
   Wand2,
@@ -636,6 +637,7 @@ function PdfSource({
                 variant="ghost"
                 size="sm"
                 iconOnly
+                toolbarLabel={t('common.back')}
                 onClick={onExit}
                 aria-label={t('workspace.backToDocuments')}
                 title={t('workspace.backToDocuments')}
@@ -652,6 +654,7 @@ function PdfSource({
               variant="ghost"
               size="sm"
               iconOnly
+              toolbarLabel={t('workspace.previousPageShort')}
               onClick={() => setPageNumber((page) => Math.max(1, page - 1))}
               disabled={pageNumber <= 1}
               aria-label={t('workspace.previousPage')}
@@ -666,6 +669,7 @@ function PdfSource({
               variant="ghost"
               size="sm"
               iconOnly
+              toolbarLabel={t('workspace.nextPageShort')}
               onClick={() => {
                 setPageNumber((page) => Math.min(numPages || 1, page + 1));
               }}
@@ -684,6 +688,7 @@ function PdfSource({
               variant="ghost"
               size="sm"
               iconOnly
+              toolbarLabel={t('workspace.zoomOut')}
               onClick={() => zoomBy(-SCALE_STEP)}
               aria-label={t('workspace.zoomOut')}
               title={t('workspace.zoomOut')}
@@ -695,6 +700,7 @@ function PdfSource({
               variant="ghost"
               size="sm"
               iconOnly
+              toolbarLabel={t('workspace.zoomIn')}
               onClick={() => zoomBy(SCALE_STEP)}
               aria-label={t('workspace.zoomIn')}
               title={t('workspace.zoomIn')}
@@ -705,6 +711,7 @@ function PdfSource({
               variant="ghost"
               size="sm"
               iconOnly
+              toolbarLabel={t('workspace.fitToViewShort')}
               onClick={() => {
                 wheelAnchorRef.current = null;
                 setFitMode(true);
@@ -724,6 +731,7 @@ function PdfSource({
               variant="ghost"
               size="sm"
               iconOnly
+              toolbarLabel={t('workspace.selectTextShort')}
               className={mode === 'text' ? styles.active : undefined}
               onClick={() => setMode('text')}
               aria-label={t('workspace.selectText')}
@@ -736,6 +744,7 @@ function PdfSource({
               variant="ghost"
               size="sm"
               iconOnly
+              toolbarLabel={t('common.panShort')}
               className={mode === 'pan' ? styles.active : undefined}
               onClick={() => setMode((current) => (current === 'pan' ? 'text' : 'pan'))}
               aria-label={t('common.handTool')}
@@ -748,6 +757,7 @@ function PdfSource({
               variant="ghost"
               size="sm"
               iconOnly
+              toolbarLabel={t('workspace.selectRegionShort')}
               className={mode === 'region' ? styles.active : undefined}
               onClick={() => {
                 setMode('region');
@@ -763,6 +773,7 @@ function PdfSource({
               variant="ghost"
               size="sm"
               iconOnly
+              toolbarLabel={t('workspace.thumbnails')}
               onClick={() => setThumbnailsOpen((value) => !value)}
               aria-label={t('workspace.toggleThumbnails')}
               title={t('workspace.thumbnails')}
@@ -778,26 +789,36 @@ function PdfSource({
             <Button
               variant="ghost"
               size="sm"
+              iconOnly
+              toolbarLabel={t('workspace.insertTextShort')}
+              aria-label={t('workspace.insertPageText')}
               onClick={() => onInsertText(pageText)}
               disabled={!pageText}
               title={t('workspace.insertPageText')}
             >
               <FileText size={15} aria-hidden="true" />
-              {t('workspace.insertPageText')}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => onOcrPage(pageNumber)}>
-              <ScanText size={15} aria-hidden="true" />
-              {t('workspace.ocrPage')}
             </Button>
             <Button
               variant="ghost"
               size="sm"
+              iconOnly
+              toolbarLabel={t('workspace.ocrPageShort')}
+              aria-label={t('workspace.ocrPage')}
+              onClick={() => onOcrPage(pageNumber)}
+            >
+              <ScanText size={15} aria-hidden="true" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              iconOnly
+              toolbarLabel={t('workspace.aiPageShort')}
               onClick={() => onAiText(pageText, t('workspace.aiScopePage', { page: pageNumber }))}
               disabled={!pageText}
+              aria-label={t('workspace.aiPage')}
               title={t('workspace.aiPage')}
             >
               <Sparkles size={15} aria-hidden="true" />
-              {t('workspace.aiPage')}
             </Button>
           </div>
         </div>
@@ -825,22 +846,41 @@ function PdfSource({
           <span>{t('workspace.regionHint')}</span>
           {selection.rect ? (
             <>
-              <Button variant="secondary" size="sm" onClick={() => void handleOcrRegion()}>
+              <Button
+                variant="secondary"
+                size="sm"
+                iconOnly
+                toolbarLabel={t('workspace.ocrRegionShort')}
+                aria-label={t('workspace.ocrRegion')}
+                onClick={() => void handleOcrRegion()}
+              >
                 <ScanText size={15} aria-hidden="true" />
-                {t('workspace.ocrRegion')}
               </Button>
-              <Button variant="secondary" size="sm" onClick={() => void handleCopy()}>
+              <Button
+                variant="secondary"
+                size="sm"
+                iconOnly
+                toolbarLabel={t('common.copy')}
+                aria-label={t('workspace.copyRegion')}
+                onClick={() => void handleCopy()}
+              >
                 <Clipboard size={15} aria-hidden="true" />
-                {t('workspace.copyRegion')}
-              </Button>
-              <Button variant="ghost" size="sm" onClick={handleDownload}>
-                <ImageDown size={15} aria-hidden="true" />
-                {t('workspace.downloadRegion')}
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
                 iconOnly
+                toolbarLabel={t('common.download')}
+                aria-label={t('workspace.downloadRegion')}
+                onClick={handleDownload}
+              >
+                <ImageDown size={15} aria-hidden="true" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                iconOnly
+                toolbarLabel={t('common.clear')}
                 onClick={selection.clear}
                 aria-label={t('workspace.clearSelection')}
                 title={t('workspace.clearSelection')}
@@ -1181,6 +1221,7 @@ function ImageSource({
                 variant="ghost"
                 size="sm"
                 iconOnly
+                toolbarLabel={t('common.back')}
                 onClick={onExit}
                 aria-label={t('workspace.backToDocuments')}
                 title={t('workspace.backToDocuments')}
@@ -1197,26 +1238,30 @@ function ImageSource({
               variant="ghost"
               size="sm"
               iconOnly
+              toolbarLabel={t('workspace.zoomOut')}
               onClick={() => zoomBy(-0.25)}
               aria-label={t('workspace.zoomOut')}
               title={t('workspace.zoomOut')}
             >
               <ZoomOut size={17} aria-hidden="true" />
             </Button>
+            <span className={styles.percent}>{Math.round(zoom * 100)}%</span>
             <Button
               variant="ghost"
               size="sm"
-              className={styles.zoomReset}
+              iconOnly
+              toolbarLabel={t('workspace.actualSizeShort')}
               onClick={actualSize}
               aria-label={t('workspace.actualSize')}
               title={t('workspace.actualSize')}
             >
-              <span className={styles.percent}>{Math.round(zoom * 100)}%</span>
+              <ScanEye size={16} aria-hidden="true" />
             </Button>
             <Button
               variant="ghost"
               size="sm"
               iconOnly
+              toolbarLabel={t('workspace.zoomIn')}
               onClick={() => zoomBy(0.25)}
               aria-label={t('workspace.zoomIn')}
               title={t('workspace.zoomIn')}
@@ -1227,6 +1272,7 @@ function ImageSource({
               variant="ghost"
               size="sm"
               iconOnly
+              toolbarLabel={t('workspace.fitToViewShort')}
               onClick={fitToView}
               aria-label={t('workspace.fitToView')}
               title={t('workspace.fitToView')}
@@ -1238,6 +1284,7 @@ function ImageSource({
               variant="ghost"
               size="sm"
               iconOnly
+              toolbarLabel={t('common.panShort')}
               className={panEnabled ? styles.active : undefined}
               onClick={togglePan}
               aria-label={t('common.handTool')}
@@ -1255,21 +1302,36 @@ function ImageSource({
               <Button
                 variant="ghost"
                 size="sm"
+                iconOnly
+                toolbarLabel={
+                  hasRefinedImage
+                    ? t('workspace.refineImageUpdateShort')
+                    : t('workspace.refineImageShort')
+                }
+                aria-label={
+                  hasRefinedImage ? t('workspace.refineImageUpdate') : t('workspace.refineImage')
+                }
                 onClick={onRefineImage}
                 title={t('workspace.refineImageHint')}
               >
                 <Wand2 size={15} aria-hidden="true" />
-                {hasRefinedImage ? t('workspace.refineImageUpdate') : t('workspace.refineImage')}
               </Button>
             ) : null}
-            <Button variant="ghost" size="sm" onClick={onOcrImage}>
+            <Button
+              variant="ghost"
+              size="sm"
+              iconOnly
+              toolbarLabel={t('workspace.ocrImageShort')}
+              aria-label={t('workspace.ocrImage')}
+              onClick={onOcrImage}
+            >
               <ScanText size={15} aria-hidden="true" />
-              {t('workspace.ocrImage')}
             </Button>
             <Button
               variant="ghost"
               size="sm"
               iconOnly
+              toolbarLabel={t('workspace.selectRegionShort')}
               className={mode === 'region' ? styles.active : undefined}
               onClick={() => {
                 if (mode === 'region') {
@@ -1294,17 +1356,32 @@ function ImageSource({
           <span>{t('workspace.regionHint')}</span>
           {selection.rect ? (
             <>
-              <Button variant="secondary" size="sm" onClick={() => void handleOcrRegion()}>
+              <Button
+                variant="secondary"
+                size="sm"
+                iconOnly
+                toolbarLabel={t('workspace.ocrRegionShort')}
+                aria-label={t('workspace.ocrRegion')}
+                onClick={() => void handleOcrRegion()}
+              >
                 <ScanText size={15} aria-hidden="true" />
-                {t('workspace.ocrRegion')}
               </Button>
-              <Button variant="secondary" size="sm" onClick={() => void handleCopy()}>
+              <Button
+                variant="secondary"
+                size="sm"
+                iconOnly
+                toolbarLabel={t('common.copy')}
+                aria-label={t('workspace.copyRegion')}
+                onClick={() => void handleCopy()}
+              >
                 <Clipboard size={15} aria-hidden="true" />
-                {t('workspace.copyRegion')}
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
+                iconOnly
+                toolbarLabel={t('common.download')}
+                aria-label={t('workspace.downloadRegion')}
                 onClick={() => {
                   const image = imageRef.current;
                   if (image && selection.rect) {
@@ -1317,12 +1394,12 @@ function ImageSource({
                 }}
               >
                 <Download size={15} aria-hidden="true" />
-                {t('workspace.downloadRegion')}
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
                 iconOnly
+                toolbarLabel={t('common.clear')}
                 onClick={selection.clear}
                 aria-label={t('workspace.clearSelection')}
                 title={t('workspace.clearSelection')}
@@ -1436,6 +1513,7 @@ function TextSource({
                 variant="ghost"
                 size="sm"
                 iconOnly
+                toolbarLabel={t('common.back')}
                 onClick={onExit}
                 aria-label={t('workspace.backToDocuments')}
                 title={t('workspace.backToDocuments')}
@@ -1451,22 +1529,26 @@ function TextSource({
             <Button
               variant="ghost"
               size="sm"
+              iconOnly
+              toolbarLabel={t('workspace.insertAllTextShort')}
+              aria-label={t('workspace.insertAllText')}
               onClick={() => onInsertText(text)}
               disabled={!text}
               title={t('workspace.insertAllText')}
             >
               <FileText size={15} aria-hidden="true" />
-              {t('workspace.insertAllText')}
             </Button>
             <Button
               variant="ghost"
               size="sm"
+              iconOnly
+              toolbarLabel={t('workspace.aiDocumentShort')}
+              aria-label={t('workspace.aiDocument')}
               onClick={() => onAiText(text, t('workspace.aiScopeDocument'))}
               disabled={!text}
               title={t('workspace.aiDocument')}
             >
               <Sparkles size={15} aria-hidden="true" />
-              {t('workspace.aiDocument')}
             </Button>
           </div>
         </div>

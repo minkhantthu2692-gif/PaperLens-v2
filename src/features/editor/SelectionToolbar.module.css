@@ -154,7 +154,7 @@
   min-width: 0;
 }
 
-.rowControls select {
+.rowControls [data-compact-select-trigger] {
   flex: 1 1 auto;
   width: auto;
   max-width: 100%;

@@ -9,10 +9,21 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   iconOnly?: boolean;
+  toolbarLabel?: string;
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { variant = 'secondary', size = 'md', iconOnly = false, className, type = 'button', ...props },
+  {
+    variant = 'secondary',
+    size = 'md',
+    iconOnly = false,
+    toolbarLabel,
+    title,
+    className,
+    type = 'button',
+    children,
+    ...props
+  },
   ref,
 ) {
   return (
@@ -24,9 +35,15 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
         styles[variant],
         styles[size],
         iconOnly && styles.iconOnly,
+        toolbarLabel && styles.toolbarExpandable,
         className,
       )}
+      title={toolbarLabel ? undefined : title}
+      data-toolbar-expandable={toolbarLabel ? '' : undefined}
       {...props}
-    />
+    >
+      {children}
+      {toolbarLabel ? <span className={styles.toolbarLabel}>{toolbarLabel}</span> : null}
+    </button>
   );
 });

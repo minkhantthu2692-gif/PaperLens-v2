@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
+import { CompactSelect } from '@/components/ui/CompactSelect';
 import { Dialog } from '@/components/ui/Dialog';
 import formStyles from '@/components/ui/Form.module.css';
 import type { EditorContent as EditorSnapshot } from '@/domain/document';
@@ -195,7 +196,11 @@ export function EditorPanel({
       if (!(target instanceof Node)) {
         return;
       }
-      if (toolbarRef.current?.contains(target) || moreFormattingRef.current?.contains(target)) {
+      if (
+        toolbarRef.current?.contains(target) ||
+        moreFormattingRef.current?.contains(target) ||
+        (target instanceof Element && target.closest('[data-compact-select-menu]'))
+      ) {
         return;
       }
       setMoreFormattingOpen(false);
@@ -353,6 +358,7 @@ export function EditorPanel({
             variant="ghost"
             size="sm"
             iconOnly
+            toolbarLabel={t('editor.findShort')}
             className={searchOpen ? styles.active : undefined}
             onClick={() => openSearch(false)}
             aria-label={t('editor.find')}
@@ -365,6 +371,7 @@ export function EditorPanel({
             variant="ghost"
             size="sm"
             iconOnly
+            toolbarLabel={t('editor.aiAssistantShort')}
             onClick={openAiAssistant}
             aria-label={t('editor.aiAssistant')}
             title={t('editor.aiAssistant')}
@@ -391,6 +398,7 @@ export function EditorPanel({
             variant="ghost"
             size="sm"
             iconOnly
+            toolbarLabel={t('editor.undo')}
             onClick={() => editor.chain().focus().undo().run()}
             disabled={!editor.can().undo()}
             aria-label={t('editor.undo')}
@@ -402,6 +410,7 @@ export function EditorPanel({
             variant="ghost"
             size="sm"
             iconOnly
+            toolbarLabel={t('editor.redo')}
             onClick={() => editor.chain().focus().redo().run()}
             disabled={!editor.can().redo()}
             aria-label={t('editor.redo')}
@@ -414,12 +423,17 @@ export function EditorPanel({
         <span className={styles.divider} aria-hidden="true" />
 
         <div className={`${styles.toolbarGroup} ${styles.fontControlsGroup}`}>
-          <select
-            className={styles.select}
+          <CompactSelect
+            className={`${styles.select} ${styles.paragraphSelect}`}
             value={headingValue}
-            aria-label={t('editor.paragraph')}
-            onChange={(event) => {
-              const value = event.target.value;
+            ariaLabel={t('editor.paragraph')}
+            options={[
+              { value: 'paragraph', label: t('editor.paragraph') },
+              { value: '1', label: t('editor.heading1') },
+              { value: '2', label: t('editor.heading2') },
+              { value: '3', label: t('editor.heading3') },
+            ]}
+            onChange={(value) => {
               if (value === 'paragraph') {
                 editor.chain().focus().setParagraph().run();
               } else {
@@ -430,12 +444,7 @@ export function EditorPanel({
                   .run();
               }
             }}
-          >
-            <option value="paragraph">{t('editor.paragraph')}</option>
-            <option value="1">{t('editor.heading1')}</option>
-            <option value="2">{t('editor.heading2')}</option>
-            <option value="3">{t('editor.heading3')}</option>
-          </select>
+          />
           <FontFamilyControl
             value={fontFamily}
             label={t('editor.fontFamily')}
@@ -446,6 +455,8 @@ export function EditorPanel({
             label={t('editor.fontSize')}
             decreaseLabel={t('editor.decreaseFontSize')}
             increaseLabel={t('editor.increaseFontSize')}
+            decreaseToolbarLabel={t('editor.decreaseFontSizeShort')}
+            increaseToolbarLabel={t('editor.increaseFontSizeShort')}
             onChange={(size) => setTextStyle(editor, { fontSize: `${size}px` })}
             showSteps
           />
@@ -458,6 +469,7 @@ export function EditorPanel({
             variant="ghost"
             size="sm"
             iconOnly
+            toolbarLabel={t('editor.bold')}
             className={editor.isActive('bold') ? styles.active : undefined}
             onClick={() => editor.chain().focus().toggleBold().run()}
             aria-label={t('editor.bold')}
@@ -470,6 +482,7 @@ export function EditorPanel({
             variant="ghost"
             size="sm"
             iconOnly
+            toolbarLabel={t('editor.italic')}
             className={editor.isActive('italic') ? styles.active : undefined}
             onClick={() => editor.chain().focus().toggleItalic().run()}
             aria-label={t('editor.italic')}
@@ -482,6 +495,7 @@ export function EditorPanel({
             variant="ghost"
             size="sm"
             iconOnly
+            toolbarLabel={t('editor.underline')}
             className={editor.isActive('underline') ? styles.active : undefined}
             onClick={() => editor.chain().focus().toggleUnderline().run()}
             aria-label={t('editor.underline')}
@@ -507,6 +521,7 @@ export function EditorPanel({
           variant="ghost"
           size="sm"
           iconOnly
+          toolbarLabel={t('editor.moreFormattingShort')}
           className={moreFormattingOpen ? styles.active : undefined}
           onClick={() => setMoreFormattingOpen((value) => !value)}
           aria-label={t('editor.moreFormatting')}
@@ -535,6 +550,7 @@ export function EditorPanel({
             variant="ghost"
             size="sm"
             iconOnly
+            toolbarLabel={t('editor.strikeShort')}
             className={editor.isActive('strike') ? styles.active : undefined}
             onClick={() => editor.chain().focus().toggleStrike().run()}
             aria-label={t('editor.strike')}
@@ -547,6 +563,7 @@ export function EditorPanel({
             variant="ghost"
             size="sm"
             iconOnly
+            toolbarLabel={t('editor.linkShort')}
             className={linkActive ? styles.active : undefined}
             onClick={openLinkDialog}
             disabled={!canEditLink}
@@ -560,6 +577,7 @@ export function EditorPanel({
             variant="ghost"
             size="sm"
             iconOnly
+            toolbarLabel={t('editor.bulletListShort')}
             className={editor.isActive('bulletList') ? styles.active : undefined}
             onClick={() => editor.chain().focus().toggleBulletList().run()}
             aria-label={t('editor.bulletList')}
@@ -572,6 +590,7 @@ export function EditorPanel({
             variant="ghost"
             size="sm"
             iconOnly
+            toolbarLabel={t('editor.orderedListShort')}
             className={editor.isActive('orderedList') ? styles.active : undefined}
             onClick={() => editor.chain().focus().toggleOrderedList().run()}
             aria-label={t('editor.orderedList')}
@@ -584,6 +603,7 @@ export function EditorPanel({
             variant="ghost"
             size="sm"
             iconOnly
+            toolbarLabel={t('editor.blockquote')}
             className={editor.isActive('blockquote') ? styles.active : undefined}
             onClick={() => editor.chain().focus().toggleBlockquote().run()}
             aria-label={t('editor.blockquote')}
@@ -597,6 +617,7 @@ export function EditorPanel({
             variant="ghost"
             size="sm"
             iconOnly
+            toolbarLabel={t('editor.alignLeftShort')}
             className={alignmentIsActive('left') ? styles.active : undefined}
             onClick={() => editor.chain().focus().setTextAlign('left').run()}
             aria-label={t('editor.alignLeft')}
@@ -609,6 +630,7 @@ export function EditorPanel({
             variant="ghost"
             size="sm"
             iconOnly
+            toolbarLabel={t('editor.alignCenterShort')}
             className={alignmentIsActive('center') ? styles.active : undefined}
             onClick={() => editor.chain().focus().setTextAlign('center').run()}
             aria-label={t('editor.alignCenter')}
@@ -621,6 +643,7 @@ export function EditorPanel({
             variant="ghost"
             size="sm"
             iconOnly
+            toolbarLabel={t('editor.alignRightShort')}
             className={alignmentIsActive('right') ? styles.active : undefined}
             onClick={() => editor.chain().focus().setTextAlign('right').run()}
             aria-label={t('editor.alignRight')}
@@ -633,6 +656,7 @@ export function EditorPanel({
             variant="ghost"
             size="sm"
             iconOnly
+            toolbarLabel={t('editor.alignJustifyShort')}
             className={alignmentIsActive('justify') ? styles.active : undefined}
             onClick={() => editor.chain().focus().setTextAlign('justify').run()}
             aria-label={t('editor.alignJustify')}
@@ -641,31 +665,33 @@ export function EditorPanel({
           >
             <AlignJustify size={16} aria-hidden="true" />
           </Button>
-          <label className={styles.lineSpacingLabel}>
-            {t('editor.lineSpacing')}
-            <select
+          <div className={styles.lineSpacingLabel}>
+            <span>{t('editor.lineSpacing')}</span>
+            <CompactSelect
               className={styles.select}
               value={lineSpacing ?? ''}
-              aria-label={t('editor.lineSpacing')}
-              onChange={(event) => setLineSpacing(editor, lineSpacingValue(event.target.value))}
-            >
-              <option value="">{t('editor.lineSpacingDefault')}</option>
-              <option value="1">1.0</option>
-              <option value="1.15">1.15</option>
-              <option value="1.5">1.5</option>
-              <option value="2">2.0</option>
-            </select>
-          </label>
+              ariaLabel={t('editor.lineSpacing')}
+              options={[
+                { value: '', label: t('editor.lineSpacingDefault') },
+                { value: '1', label: '1.0' },
+                { value: '1.15', label: '1.15' },
+                { value: '1.5', label: '1.5' },
+                { value: '2', label: '2.0' },
+              ]}
+              onChange={(value) => setLineSpacing(editor, lineSpacingValue(value))}
+            />
+          </div>
           <span className={styles.divider} aria-hidden="true" />
           <Button
             variant="ghost"
             size="sm"
+            iconOnly
+            toolbarLabel={t('editor.clearFormattingShort')}
             onClick={() => editor.chain().focus().unsetAllMarks().run()}
             aria-label={t('editor.clearFormatting')}
             title={t('editor.clearFormatting')}
           >
             <Eraser size={16} aria-hidden="true" />
-            {t('editor.clearFormatting')}
           </Button>
         </div>
       ) : null}

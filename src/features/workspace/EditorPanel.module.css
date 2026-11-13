@@ -34,17 +34,45 @@
   scrollbar-width: thin;
 }
 
-.toolbar.fullWorkspaceToolbar > button,
+.toolbar.fullWorkspaceToolbar > button:not([data-toolbar-expandable]),
 .toolbar.fullWorkspaceToolbar > .divider,
 .toolbar.fullWorkspaceToolbar .toolbarGroup > button {
   flex: none;
 }
 
-.toolbar.fullWorkspaceToolbar > button,
-.toolbar.fullWorkspaceToolbar .toolbarGroup > button {
+.toolbar.fullWorkspaceToolbar > button:not([data-toolbar-expandable]),
+.toolbar.fullWorkspaceToolbar .toolbarGroup > button:not([data-toolbar-expandable]) {
   width: 1.75rem;
   min-width: 1.75rem;
   min-height: 1.75rem;
+}
+
+.toolbar.fullWorkspaceToolbar [data-toolbar-expandable] {
+  min-width: 1.75rem;
+  max-width: 1.75rem;
+  min-height: 1.75rem;
+  padding: 0 0.3125rem;
+}
+
+.toolbar.fullWorkspaceToolbar [data-toolbar-expandable]:hover,
+.toolbar.fullWorkspaceToolbar [data-toolbar-expandable]:focus-visible {
+  max-width: 20rem;
+}
+
+.toolbar.fullWorkspaceToolbar [data-toolbar-expandable]:hover,
+.toolbar.fullWorkspaceToolbar [data-toolbar-expandable]:focus-visible {
+  padding: 0 0.3125rem;
+}
+
+.toolbar.fullWorkspaceToolbar [data-toolbar-expandable] .toolbarLabel {
+  max-width: 0;
+  margin-inline-start: 0;
+}
+
+.toolbar.fullWorkspaceToolbar [data-toolbar-expandable]:hover .toolbarLabel,
+.toolbar.fullWorkspaceToolbar [data-toolbar-expandable]:focus-visible .toolbarLabel {
+  max-width: 16rem;
+  margin-inline-start: var(--space-2);
 }
 
 .toolbar.fullWorkspaceToolbar .divider {
@@ -187,6 +215,18 @@
   }
 }
 
+@media (hover: none) {
+  .toolbar.fullWorkspaceToolbar [data-toolbar-expandable] {
+    max-width: 20rem;
+  }
+
+  .toolbar.fullWorkspaceToolbar [data-toolbar-expandable] .toolbarLabel {
+    max-width: 16rem;
+    margin-inline-start: var(--space-2);
+    opacity: 1;
+  }
+}
+
 .toolbar button {
   color: var(--color-text-secondary);
 }
@@ -211,6 +251,10 @@
   background-color: transparent;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
+}
+
+.paragraphSelect {
+  --compact-select-width: 8.5rem;
 }
 
 .select:hover {

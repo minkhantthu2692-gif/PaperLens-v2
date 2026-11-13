@@ -679,6 +679,7 @@ export default function WorkspacePage() {
                   variant="ghost"
                   size="sm"
                   iconOnly
+                  toolbarLabel={t('translator.open')}
                   onClick={() => setTranslatorOpen(true)}
                   disabled={!editorReady}
                   aria-label={t('translator.open')}
@@ -690,6 +691,7 @@ export default function WorkspacePage() {
                   variant="ghost"
                   size="sm"
                   iconOnly
+                  toolbarLabel={t('workspace.cleanupShort')}
                   onClick={handleOpenCleanup}
                   disabled={!editorReady}
                   aria-label={t('workspace.cleanup')}
@@ -703,6 +705,9 @@ export default function WorkspacePage() {
                     variant={isFocusMode ? 'secondary' : 'ghost'}
                     size="sm"
                     iconOnly
+                    toolbarLabel={t(
+                      isFocusMode ? 'workspace.exitFocusModeShort' : 'workspace.focusModeShort',
+                    )}
                     onClick={() => setFocusMode(!isFocusMode)}
                     disabled={!editorReady}
                     aria-label={t(isFocusMode ? 'workspace.exitFocusMode' : 'workspace.focusMode')}

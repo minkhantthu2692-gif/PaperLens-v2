@@ -134,6 +134,7 @@ export function SourceInfoButton({ asset, pageCount }: SourceInfoButtonProps) {
         variant="ghost"
         size="sm"
         iconOnly
+        toolbarLabel={t('workspace.infoButtonShort')}
         aria-label={t('workspace.infoButton')}
         title={t('workspace.infoButton')}
         aria-haspopup="dialog"
