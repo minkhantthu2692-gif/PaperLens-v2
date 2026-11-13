@@ -39,13 +39,13 @@
   flex: none;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--toolbar-gap, var(--space-1));
-  padding: var(--space-1) var(--space-2);
+  gap: var(--toolbar-gap, var(--space-2));
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--color-border-subtle);
   background-color: var(--color-bg-subtle);
-  --toolbar-gap: var(--space-1);
-  --group-gap: 2px;
-  --section-gap: var(--space-2);
+  --toolbar-gap: var(--space-2);
+  --group-gap: var(--space-1);
+  --section-gap: var(--space-3);
 }
 
 .toolbarSection {
@@ -70,6 +70,11 @@
 
 .toolGroup button {
   color: var(--color-text-secondary);
+}
+
+.active {
+  color: var(--color-text-accent) !important;
+  background-color: var(--color-bg-accent-soft) !important;
 }
 
 .pageIndicator,
@@ -294,14 +299,11 @@
   display: block;
   max-width: none;
   box-shadow: var(--shadow-md);
-  transition: transform var(--duration-normal) var(--easing-standard);
 }
 
-/* Quarter-turned images are centered inside a stage sized to their rotated box. */
-.imageRotated {
-  position: absolute;
-  top: 50%;
-  left: 50%;
+.zoomReset {
+  min-width: 2.75rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .textPreview {
@@ -338,11 +340,14 @@
     padding: var(--space-1) var(--space-2);
   }
 
-  /* Let all groups flow in one compact wrapped row instead of stacking. */
   .toolbarSection + .toolbarSection {
     margin-left: 0;
     padding-left: 0;
     border-left: none;
+    margin-top: var(--space-1);
+    padding-top: var(--space-1);
+    border-top: 1px solid var(--color-border-subtle);
+    width: 100%;
   }
 
   .scroll {
