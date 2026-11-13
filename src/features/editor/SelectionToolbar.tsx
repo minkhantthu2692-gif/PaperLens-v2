@@ -3,8 +3,10 @@ import {
   useEffect,
   useRef,
   useState,
-  type MouseEvent,
   type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+  type RefObject,
 } from 'react';
 import type { Editor } from '@tiptap/react';
 import {
@@ -13,17 +15,32 @@ import {
   AlignLeft,
   AlignRight,
   Bold,
+  ChevronDown,
+  ClipboardPaste,
+  Copy,
   Eraser,
   Italic,
   List,
   ListOrdered,
   MoreHorizontal,
+  Pilcrow,
+  Scissors,
   Strikethrough,
+  TextSelect,
   Underline as UnderlineIcon,
 } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import { getParagraphAlignment } from '@/domain/paragraphAlignment';
+import {
+  canReadClipboard,
+  copySelection,
+  insertPlainText,
+  readClipboardText,
+  selectContainingBlock,
+  shortcutModifier,
+} from './clipboard';
 import {
   colorInputValue,
   cssFontFamily,
@@ -36,36 +53,123 @@ import {
   setTextStyle,
 } from './formatting';
 import { ColorControl, FontFamilyControl, FontSizeControl } from './FormattingInputs';
-import { prefersSelectionToolbarBelow, selectionToolbarTop } from './nativeSelection';
+import {
+  placeSelectionPopup,
+  prefersSelectionToolbarBelow,
+  type SelectionPopupPlacement,
+} from './nativeSelection';
 import styles from './SelectionToolbar.module.css';
 
-interface ToolbarPosition {
-  left: number;
-  top: number;
+type StatusTone = 'info' | 'success' | 'error';
+
+interface StatusMessage {
+  message: string;
+  tone: StatusTone;
 }
 
-export function SelectionToolbar({ editor }: { editor: Editor }) {
+function useFinePointer(): boolean {
+  const [fine, setFine] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return;
+    }
+    const query = window.matchMedia('(hover: hover) and (pointer: fine)');
+    setFine(query.matches);
+    const update = (event: MediaQueryListEvent) => setFine(event.matches);
+    query.addEventListener?.('change', update);
+    return () => query.removeEventListener?.('change', update);
+  }, []);
+
+  return fine;
+}
+
+function ActionRow({
+  icon,
+  label,
+  shortcut,
+  disabled,
+  onSelect,
+}: {
+  icon: ReactNode;
+  label: string;
+  shortcut?: string | undefined;
+  disabled?: boolean | undefined;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={styles.action}
+      onClick={onSelect}
+      disabled={disabled}
+      aria-label={label}
+      title={label}
+    >
+      <span className={styles.actionIcon} aria-hidden="true">
+        {icon}
+      </span>
+      <span className={styles.actionLabel}>{label}</span>
+      {shortcut ? (
+        <kbd className={styles.shortcut} aria-hidden="true">
+          {shortcut}
+        </kbd>
+      ) : null}
+    </button>
+  );
+}
+
+function LabeledRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className={styles.row}>
+      <span className={styles.rowLabel} aria-hidden="true">
+        {label}
+      </span>
+      <div className={styles.rowControls}>{children}</div>
+    </div>
+  );
+}
+
+export function SelectionToolbar({
+  editor,
+  avoidRef,
+}: {
+  editor: Editor;
+  /** Editor chrome (such as the main toolbar) the popup must not cover. */
+  avoidRef?: RefObject<HTMLElement>;
+}) {
   const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
   const dismissedSelectionRef = useRef('');
-  const [position, setPosition] = useState<ToolbarPosition | null>(null);
+  const lastSelectionKeyRef = useRef('');
+  const statusTimerRef = useRef<number | null>(null);
+  const [placement, setPlacement] = useState<SelectionPopupPlacement | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [status, setStatus] = useState<StatusMessage | null>(null);
+  const [pastePending, setPastePending] = useState(false);
   const [, setRevision] = useState(0);
+  const showShortcuts = useFinePointer();
+  const canPaste = canReadClipboard();
+  const modifier = shortcutModifier();
 
   const updatePosition = useCallback(() => {
     const { from, to, empty } = editor.state.selection;
     if (empty) {
       dismissedSelectionRef.current = '';
-      setPosition(null);
+      setPlacement(null);
       return;
     }
 
     const selectionKey = `${from}:${to}`;
-    if (dismissedSelectionRef.current && dismissedSelectionRef.current !== selectionKey) {
-      dismissedSelectionRef.current = '';
+    if (lastSelectionKeyRef.current !== selectionKey) {
+      lastSelectionKeyRef.current = selectionKey;
+      setStatus(null);
+      if (dismissedSelectionRef.current) {
+        dismissedSelectionRef.current = '';
+      }
     }
     if (dismissedSelectionRef.current === selectionKey) {
-      setPosition(null);
+      setPlacement(null);
       return;
     }
 
@@ -73,26 +177,24 @@ export function SelectionToolbar({ editor }: { editor: Editor }) {
       const start = editor.view.coordsAtPos(from);
       const end = editor.view.coordsAtPos(to);
       const menu = menuRef.current?.getBoundingClientRect();
-      const width = menu?.width || 360;
-      const height = menu?.height || 44;
-      const left = Math.max(
-        8,
-        Math.min(window.innerWidth - width - 8, (start.left + end.right) / 2 - width / 2),
+      const avoid = avoidRef?.current?.getBoundingClientRect();
+      setPlacement(
+        placeSelectionPopup({
+          anchor: { left: start.left, right: start.right, top: start.top, bottom: end.bottom },
+          popupWidth: menu?.width || 248,
+          popupHeight: menu?.height || 300,
+          viewportWidth: window.innerWidth,
+          viewportHeight: window.visualViewport?.height ?? window.innerHeight,
+          // On touch devices the native selection toolbar sits above the
+          // selection, so staying below it keeps our popup reachable.
+          preferBelow: prefersSelectionToolbarBelow(),
+          topInset: avoid ? avoid.bottom + 4 : 8,
+        }),
       );
-      const top = selectionToolbarTop({
-        selectionTop: start.top,
-        selectionBottom: end.bottom,
-        toolbarHeight: height,
-        viewportHeight: window.innerHeight,
-        // On touch devices the native selection toolbar sits above the
-        // selection, so staying below it keeps our toolbar reachable.
-        preferBelow: prefersSelectionToolbarBelow(),
-      });
-      setPosition({ left, top });
     } catch {
-      setPosition(null);
+      setPlacement(null);
     }
-  }, [editor]);
+  }, [editor, avoidRef]);
 
   useEffect(() => {
     const syncSelection = () => {
@@ -109,8 +211,9 @@ export function SelectionToolbar({ editor }: { editor: Editor }) {
       }
       const { from, to } = editor.state.selection;
       dismissedSelectionRef.current = `${from}:${to}`;
-      setPosition(null);
+      setPlacement(null);
       setMoreOpen(false);
+      setStatus(null);
     };
 
     editor.on('selectionUpdate', syncSelection);
@@ -132,13 +235,40 @@ export function SelectionToolbar({ editor }: { editor: Editor }) {
   }, [editor, updatePosition]);
 
   useEffect(() => {
-    if (!position || !menuRef.current || typeof ResizeObserver !== 'function') {
+    if (!placement || !menuRef.current || typeof ResizeObserver !== 'function') {
       return;
     }
     const observer = new ResizeObserver(updatePosition);
     observer.observe(menuRef.current);
     return () => observer.disconnect();
-  }, [position, moreOpen, updatePosition]);
+  }, [placement, moreOpen, updatePosition]);
+
+  useEffect(
+    () => () => {
+      if (statusTimerRef.current !== null) {
+        window.clearTimeout(statusTimerRef.current);
+      }
+    },
+    [],
+  );
+
+  const showStatus = useCallback((message: string, tone: StatusTone) => {
+    if (statusTimerRef.current !== null) {
+      window.clearTimeout(statusTimerRef.current);
+    }
+    setStatus({ message, tone });
+    statusTimerRef.current = window.setTimeout(() => {
+      statusTimerRef.current = null;
+      setStatus(null);
+    }, 2600);
+  }, []);
+
+  const dismiss = useCallback(() => {
+    const { from, to } = editor.state.selection;
+    dismissedSelectionRef.current = `${from}:${to}`;
+    setPlacement(null);
+    setStatus(null);
+  }, [editor]);
 
   const handleMouseDown = (event: MouseEvent<HTMLDivElement>) => {
     const target = event.target;
@@ -150,12 +280,88 @@ export function SelectionToolbar({ editor }: { editor: Editor }) {
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Escape') {
-      setMoreOpen(false);
-      setPosition(null);
+      event.preventDefault();
+      dismiss();
+      editor.commands.focus();
+      return;
+    }
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') {
+      return;
+    }
+    const target = event.target;
+    if (target instanceof Element && target.closest('select, input')) {
+      return;
+    }
+    const items = Array.from(
+      menuRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), select, input') ?? [],
+    );
+    if (items.length === 0) {
+      return;
+    }
+    event.preventDefault();
+    const current = items.indexOf(document.activeElement as HTMLElement);
+    const delta = event.key === 'ArrowDown' ? 1 : -1;
+    const next = (current + delta + items.length) % items.length;
+    items[next]?.focus();
+  };
+
+  const handleCopy = () => {
+    void (async () => {
+      const copied = await copySelection(editor);
+      showStatus(
+        copied ? t('editor.clipboardCopied') : t('editor.clipboardCopyFailed'),
+        copied ? 'success' : 'error',
+      );
+    })();
+  };
+
+  const handleCut = () => {
+    void (async () => {
+      const copied = await copySelection(editor);
+      if (!copied) {
+        showStatus(t('editor.clipboardCopyFailed'), 'error');
+        return;
+      }
+      editor.chain().focus().deleteSelection().run();
+      showStatus(t('editor.clipboardCut'), 'success');
+    })();
+  };
+
+  const handlePaste = () => {
+    if (pastePending) {
+      return;
+    }
+    setPastePending(true);
+    void (async () => {
+      const result = await readClipboardText();
+      setPastePending(false);
+      if (result.status === 'unavailable') {
+        showStatus(t('editor.clipboardPasteBlocked'), 'error');
+        return;
+      }
+      if (result.status === 'empty') {
+        showStatus(t('editor.clipboardEmpty'), 'info');
+        return;
+      }
+      if (!insertPlainText(editor, result.text)) {
+        showStatus(t('editor.clipboardEmpty'), 'info');
+        return;
+      }
+      showStatus(t('editor.clipboardPasted'), 'success');
+    })();
+  };
+
+  const handleSelectBlock = () => {
+    if (!selectContainingBlock(editor)) {
+      showStatus(t('editor.clipboardSelectFailed'), 'info');
     }
   };
 
-  if (!position) {
+  const handleSelectAll = () => {
+    editor.chain().focus().selectAll().run();
+  };
+
+  if (!placement || typeof document === 'undefined') {
     return null;
   }
 
@@ -168,89 +374,95 @@ export function SelectionToolbar({ editor }: { editor: Editor }) {
   const spacing = getLineSpacing(editor);
   const alignmentNode = editor.isActive('heading') ? 'heading' : 'paragraph';
   const alignment = getParagraphAlignment(editor.getAttributes(alignmentNode).textAlign);
+  const selectionEmpty = editor.state.selection.empty;
 
-  return (
+  return createPortal(
     <div
       ref={menuRef}
-      className={styles.toolbar}
+      className={styles.popup}
       role="toolbar"
-      aria-label={t('editor.selectionFormatting')}
-      style={{ left: position.left, top: position.top }}
+      aria-orientation="vertical"
+      aria-label={t('editor.selectionMenu')}
+      data-side={placement.side}
+      style={{ left: placement.left, top: placement.top, maxHeight: placement.maxHeight }}
       onMouseDown={handleMouseDown}
       onKeyDown={handleKeyDown}
     >
-      <Button
-        variant="ghost"
-        size="sm"
-        iconOnly
-        className={editor.isActive('bold') ? styles.active : undefined}
-        onClick={() => editor.chain().focus().toggleBold().run()}
-        aria-label={t('editor.bold')}
-        title={t('editor.bold')}
-        aria-pressed={editor.isActive('bold')}
-      >
-        <Bold size={15} aria-hidden="true" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        iconOnly
-        className={editor.isActive('italic') ? styles.active : undefined}
-        onClick={() => editor.chain().focus().toggleItalic().run()}
-        aria-label={t('editor.italic')}
-        title={t('editor.italic')}
-        aria-pressed={editor.isActive('italic')}
-      >
-        <Italic size={15} aria-hidden="true" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        iconOnly
-        className={editor.isActive('underline') ? styles.active : undefined}
-        onClick={() => editor.chain().focus().toggleUnderline().run()}
-        aria-label={t('editor.underline')}
-        title={t('editor.underline')}
-        aria-pressed={editor.isActive('underline')}
-      >
-        <UnderlineIcon size={15} aria-hidden="true" />
-      </Button>
-      <FontSizeControl
-        value={fontSize}
-        label={t('editor.fontSize')}
-        decreaseLabel={t('editor.decreaseFontSize')}
-        increaseLabel={t('editor.increaseFontSize')}
-        onChange={(size) => setTextStyle(editor, { fontSize: `${size}px` })}
-      />
-      <ColorControl
-        value={color}
-        label={t('editor.textColor')}
-        onChange={(nextColor) => setTextStyle(editor, { color: nextColor })}
-      />
-      <ColorControl
-        value={highlightColor}
-        label={t('editor.highlightColor')}
-        onChange={(nextColor) => setHighlightColor(editor, nextColor)}
-      />
-      <Button
-        variant="ghost"
-        size="sm"
-        iconOnly
-        className={moreOpen ? styles.active : undefined}
-        onClick={() => setMoreOpen((value) => !value)}
-        aria-label={t('editor.moreFormatting')}
-        title={t('editor.moreFormatting')}
-        aria-expanded={moreOpen}
-      >
-        <MoreHorizontal size={16} aria-hidden="true" />
-      </Button>
-      {moreOpen ? (
-        <div className={styles.more} role="group" aria-label={t('editor.moreFormatting')}>
-          <FontFamilyControl
-            value={fontFamily}
-            label={t('editor.fontFamily')}
-            onChange={(value) => setTextStyle(editor, { fontFamily: cssFontFamily(value) })}
-          />
+      <div className={styles.group} role="group" aria-label={t('editor.clipboardGroup')}>
+        <ActionRow
+          icon={<Scissors size={15} />}
+          label={t('editor.cut')}
+          shortcut={showShortcuts ? `${modifier}+X` : undefined}
+          disabled={selectionEmpty}
+          onSelect={handleCut}
+        />
+        <ActionRow
+          icon={<Copy size={15} />}
+          label={t('editor.copy')}
+          shortcut={showShortcuts ? `${modifier}+C` : undefined}
+          disabled={selectionEmpty}
+          onSelect={handleCopy}
+        />
+        <ActionRow
+          icon={<ClipboardPaste size={15} />}
+          label={pastePending ? t('editor.pasting') : t('editor.paste')}
+          disabled={!canPaste || pastePending}
+          onSelect={handlePaste}
+        />
+        <ActionRow
+          icon={<Pilcrow size={15} />}
+          label={t('editor.selectBlock')}
+          onSelect={handleSelectBlock}
+        />
+        <ActionRow
+          icon={<TextSelect size={15} />}
+          label={t('editor.selectAll')}
+          shortcut={showShortcuts ? `${modifier}+A` : undefined}
+          onSelect={handleSelectAll}
+        />
+        {canPaste ? null : <p className={styles.hint}>{t('editor.clipboardUnavailable')}</p>}
+      </div>
+
+      <div className={styles.separator} role="separator" aria-hidden="true" />
+
+      <div className={styles.group} role="group" aria-label={t('editor.formatGroup')}>
+        <LabeledRow label={t('editor.style')}>
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            className={editor.isActive('bold') ? styles.active : undefined}
+            onClick={() => editor.chain().focus().toggleBold().run()}
+            aria-label={t('editor.bold')}
+            title={t('editor.bold')}
+            aria-pressed={editor.isActive('bold')}
+          >
+            <Bold size={15} aria-hidden="true" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            className={editor.isActive('italic') ? styles.active : undefined}
+            onClick={() => editor.chain().focus().toggleItalic().run()}
+            aria-label={t('editor.italic')}
+            title={t('editor.italic')}
+            aria-pressed={editor.isActive('italic')}
+          >
+            <Italic size={15} aria-hidden="true" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            className={editor.isActive('underline') ? styles.active : undefined}
+            onClick={() => editor.chain().focus().toggleUnderline().run()}
+            aria-label={t('editor.underline')}
+            title={t('editor.underline')}
+            aria-pressed={editor.isActive('underline')}
+          >
+            <UnderlineIcon size={15} aria-hidden="true" />
+          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -263,106 +475,185 @@ export function SelectionToolbar({ editor }: { editor: Editor }) {
           >
             <Strikethrough size={15} aria-hidden="true" />
           </Button>
-          <select
-            className={styles.lineSpacing}
-            value={spacing ?? ''}
-            aria-label={t('editor.lineSpacing')}
-            title={t('editor.lineSpacing')}
-            onChange={(event) => {
-              const next = event.target.value;
-              setLineSpacing(editor, lineSpacingValue(next));
-            }}
+        </LabeledRow>
+
+        <LabeledRow label={t('editor.font')}>
+          <FontFamilyControl
+            value={fontFamily}
+            label={t('editor.fontFamily')}
+            onChange={(value) => setTextStyle(editor, { fontFamily: cssFontFamily(value) })}
+          />
+        </LabeledRow>
+
+        <LabeledRow label={t('editor.size')}>
+          <FontSizeControl
+            value={fontSize}
+            label={t('editor.fontSize')}
+            decreaseLabel={t('editor.decreaseFontSize')}
+            increaseLabel={t('editor.increaseFontSize')}
+            onChange={(size) => setTextStyle(editor, { fontSize: `${size}px` })}
+          />
+        </LabeledRow>
+
+        <LabeledRow label={t('editor.color')}>
+          <ColorControl
+            value={color}
+            label={t('editor.textColor')}
+            onChange={(nextColor) => setTextStyle(editor, { color: nextColor })}
+          />
+          <ColorControl
+            value={highlightColor}
+            label={t('editor.highlightColor')}
+            highlight
+            onChange={(nextColor) => setHighlightColor(editor, nextColor)}
+          />
+        </LabeledRow>
+
+        <button
+          type="button"
+          className={`${styles.action} ${styles.moreToggle}`}
+          onClick={() => setMoreOpen((value) => !value)}
+          aria-label={t('editor.moreFormatting')}
+          title={t('editor.moreFormatting')}
+          aria-expanded={moreOpen}
+          aria-controls="editor-selection-more"
+        >
+          <span className={styles.actionIcon} aria-hidden="true">
+            <MoreHorizontal size={15} />
+          </span>
+          <span className={styles.actionLabel}>{t('editor.moreFormatting')}</span>
+          <ChevronDown
+            size={14}
+            aria-hidden="true"
+            className={`${styles.chevron} ${moreOpen ? styles.chevronOpen : ''}`}
+          />
+        </button>
+
+        {moreOpen ? (
+          <div
+            id="editor-selection-more"
+            className={styles.secondary}
+            role="group"
+            aria-label={t('editor.moreFormatting')}
           >
-            <option value="">{t('editor.lineSpacingDefault')}</option>
-            <option value="1">1.0</option>
-            <option value="1.15">1.15</option>
-            <option value="1.5">1.5</option>
-            <option value="2">2.0</option>
-          </select>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => editor.chain().focus().unsetAllMarks().run()}
-            aria-label={t('editor.clearFormatting')}
-            title={t('editor.clearFormatting')}
-          >
-            <Eraser size={15} aria-hidden="true" />
-            {t('editor.clearFormatting')}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            iconOnly
-            className={editor.isActive('bulletList') ? styles.active : undefined}
-            onClick={() => editor.chain().focus().toggleBulletList().run()}
-            aria-label={t('editor.bulletList')}
-            title={t('editor.bulletList')}
-            aria-pressed={editor.isActive('bulletList')}
-          >
-            <List size={15} aria-hidden="true" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            iconOnly
-            className={editor.isActive('orderedList') ? styles.active : undefined}
-            onClick={() => editor.chain().focus().toggleOrderedList().run()}
-            aria-label={t('editor.orderedList')}
-            title={t('editor.orderedList')}
-            aria-pressed={editor.isActive('orderedList')}
-          >
-            <ListOrdered size={15} aria-hidden="true" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            iconOnly
-            className={alignment === 'left' ? styles.active : undefined}
-            onClick={() => editor.chain().focus().setTextAlign('left').run()}
-            aria-label={t('editor.alignLeft')}
-            title={t('editor.alignLeft')}
-            aria-pressed={alignment === 'left'}
-          >
-            <AlignLeft size={15} aria-hidden="true" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            iconOnly
-            className={alignment === 'center' ? styles.active : undefined}
-            onClick={() => editor.chain().focus().setTextAlign('center').run()}
-            aria-label={t('editor.alignCenter')}
-            title={t('editor.alignCenter')}
-            aria-pressed={alignment === 'center'}
-          >
-            <AlignCenter size={15} aria-hidden="true" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            iconOnly
-            className={alignment === 'right' ? styles.active : undefined}
-            onClick={() => editor.chain().focus().setTextAlign('right').run()}
-            aria-label={t('editor.alignRight')}
-            title={t('editor.alignRight')}
-            aria-pressed={alignment === 'right'}
-          >
-            <AlignRight size={15} aria-hidden="true" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            iconOnly
-            className={alignment === 'justify' ? styles.active : undefined}
-            onClick={() => editor.chain().focus().setTextAlign('justify').run()}
-            aria-label={t('editor.alignJustify')}
-            title={t('editor.alignJustify')}
-            aria-pressed={alignment === 'justify'}
-          >
-            <AlignJustify size={15} aria-hidden="true" />
-          </Button>
-        </div>
+            <LabeledRow label={t('editor.lineSpacing')}>
+              <select
+                className={styles.select}
+                value={spacing ?? ''}
+                aria-label={t('editor.lineSpacing')}
+                title={t('editor.lineSpacing')}
+                onChange={(event) => {
+                  setLineSpacing(editor, lineSpacingValue(event.target.value));
+                }}
+              >
+                <option value="">{t('editor.lineSpacingDefault')}</option>
+                <option value="1">1.0</option>
+                <option value="1.15">1.15</option>
+                <option value="1.5">1.5</option>
+                <option value="2">2.0</option>
+              </select>
+            </LabeledRow>
+
+            <LabeledRow label={t('editor.list')}>
+              <Button
+                variant="ghost"
+                size="sm"
+                iconOnly
+                className={editor.isActive('bulletList') ? styles.active : undefined}
+                onClick={() => editor.chain().focus().toggleBulletList().run()}
+                aria-label={t('editor.bulletList')}
+                title={t('editor.bulletList')}
+                aria-pressed={editor.isActive('bulletList')}
+              >
+                <List size={15} aria-hidden="true" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                iconOnly
+                className={editor.isActive('orderedList') ? styles.active : undefined}
+                onClick={() => editor.chain().focus().toggleOrderedList().run()}
+                aria-label={t('editor.orderedList')}
+                title={t('editor.orderedList')}
+                aria-pressed={editor.isActive('orderedList')}
+              >
+                <ListOrdered size={15} aria-hidden="true" />
+              </Button>
+            </LabeledRow>
+
+            <LabeledRow label={t('editor.alignment')}>
+              <Button
+                variant="ghost"
+                size="sm"
+                iconOnly
+                className={alignment === 'left' ? styles.active : undefined}
+                onClick={() => editor.chain().focus().setTextAlign('left').run()}
+                aria-label={t('editor.alignLeft')}
+                title={t('editor.alignLeft')}
+                aria-pressed={alignment === 'left'}
+              >
+                <AlignLeft size={15} aria-hidden="true" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                iconOnly
+                className={alignment === 'center' ? styles.active : undefined}
+                onClick={() => editor.chain().focus().setTextAlign('center').run()}
+                aria-label={t('editor.alignCenter')}
+                title={t('editor.alignCenter')}
+                aria-pressed={alignment === 'center'}
+              >
+                <AlignCenter size={15} aria-hidden="true" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                iconOnly
+                className={alignment === 'right' ? styles.active : undefined}
+                onClick={() => editor.chain().focus().setTextAlign('right').run()}
+                aria-label={t('editor.alignRight')}
+                title={t('editor.alignRight')}
+                aria-pressed={alignment === 'right'}
+              >
+                <AlignRight size={15} aria-hidden="true" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                iconOnly
+                className={alignment === 'justify' ? styles.active : undefined}
+                onClick={() => editor.chain().focus().setTextAlign('justify').run()}
+                aria-label={t('editor.alignJustify')}
+                title={t('editor.alignJustify')}
+                aria-pressed={alignment === 'justify'}
+              >
+                <AlignJustify size={15} aria-hidden="true" />
+              </Button>
+            </LabeledRow>
+
+            <button
+              type="button"
+              className={styles.action}
+              onClick={() => editor.chain().focus().unsetAllMarks().run()}
+              aria-label={t('editor.clearFormatting')}
+              title={t('editor.clearFormatting')}
+            >
+              <span className={styles.actionIcon} aria-hidden="true">
+                <Eraser size={15} />
+              </span>
+              <span className={styles.actionLabel}>{t('editor.clearFormatting')}</span>
+            </button>
+          </div>
+        ) : null}
+      </div>
+
+      {status ? (
+        <p className={styles.status} data-tone={status.tone} role="status" aria-live="polite">
+          {status.message}
+        </p>
       ) : null}
-    </div>
+    </div>,
+    document.body,
   );
 }

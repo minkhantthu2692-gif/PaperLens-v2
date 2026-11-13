@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  placeSelectionPopup,
   prefersSelectionToolbarBelow,
-  selectionToolbarTop,
   shouldSuppressEditorContextMenu,
 } from './nativeSelection';
 
@@ -42,51 +42,74 @@ describe('editor context menu suppression', () => {
   });
 });
 
-describe('selection toolbar placement', () => {
-  const base = { toolbarHeight: 44, viewportHeight: 800 };
+describe('selection popup placement', () => {
+  const base = {
+    popupWidth: 248,
+    popupHeight: 300,
+    viewportWidth: 1200,
+    viewportHeight: 800,
+    anchor: { left: 300, right: 400, top: 400, bottom: 420 },
+  };
 
-  it('places the toolbar above the selection on pointer devices', () => {
-    expect(
-      selectionToolbarTop({
-        ...base,
-        selectionTop: 300,
-        selectionBottom: 320,
-        preferBelow: false,
-      }),
-    ).toBe(248);
+  it('places the popup above the selection on pointer devices', () => {
+    expect(placeSelectionPopup({ ...base, preferBelow: false })).toEqual({
+      left: 226,
+      top: 92,
+      maxHeight: 300,
+      side: 'above',
+    });
   });
 
-  it('places the toolbar below the selection on touch devices', () => {
-    expect(
-      selectionToolbarTop({
-        ...base,
-        selectionTop: 300,
-        selectionBottom: 320,
-        preferBelow: true,
-      }),
-    ).toBe(328);
+  it('places the popup below the selection on touch devices', () => {
+    expect(placeSelectionPopup({ ...base, preferBelow: true })).toEqual({
+      left: 226,
+      top: 428,
+      maxHeight: 300,
+      side: 'below',
+    });
   });
 
-  it('falls back above the selection on touch devices when there is no room below', () => {
-    expect(
-      selectionToolbarTop({
-        ...base,
-        selectionTop: 700,
-        selectionBottom: 790,
-        preferBelow: true,
-      }),
-    ).toBe(648);
+  it('flips above when the touch layout has no room below the selection', () => {
+    const placement = placeSelectionPopup({
+      ...base,
+      anchor: { left: 300, right: 400, top: 700, bottom: 720 },
+      preferBelow: true,
+    });
+    expect(placement.side).toBe('above');
+    expect(placement.top).toBe(392);
   });
 
-  it('keeps the toolbar inside the viewport', () => {
-    expect(
-      selectionToolbarTop({
-        ...base,
-        selectionTop: 4,
-        selectionBottom: 12,
-        preferBelow: false,
-      }),
-    ).toBe(20);
+  it('keeps the popup inside the viewport at the screen edges', () => {
+    const placement = placeSelectionPopup({
+      ...base,
+      anchor: { left: 0, right: 2, top: 4, bottom: 12 },
+      preferBelow: false,
+    });
+    expect(placement).toEqual({ left: 8, top: 20, maxHeight: 300, side: 'below' });
+  });
+
+  it('stays below sticky editor chrome', () => {
+    const placement = placeSelectionPopup({
+      ...base,
+      anchor: { left: 300, right: 400, top: 120, bottom: 140 },
+      preferBelow: false,
+      topInset: 100,
+    });
+    expect(placement.side).toBe('below');
+    expect(placement.top).toBe(148);
+  });
+
+  it('caps the popup height to the space on the chosen side', () => {
+    const placement = placeSelectionPopup({
+      ...base,
+      popupHeight: 900,
+      viewportHeight: 300,
+      anchor: { left: 300, right: 400, top: 40, bottom: 60 },
+      preferBelow: false,
+    });
+    expect(placement.side).toBe('below');
+    expect(placement.maxHeight).toBe(224);
+    expect(placement.top).toBe(68);
   });
 
   it('treats pointer-only environments as non-touch', () => {

@@ -670,7 +670,7 @@ export function EditorPanel({
         </div>
       ) : null}
 
-      <SelectionToolbar editor={editor} />
+      <SelectionToolbar editor={editor} avoidRef={toolbarRef} />
 
       <div className={styles.scroll} ref={scrollRef}>
         {searchOpen ? (

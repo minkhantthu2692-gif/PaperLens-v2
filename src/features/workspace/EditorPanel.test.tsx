@@ -402,7 +402,7 @@ describe('Editor text formatting', () => {
     act(() => activeEditor.commands.setTextSelection({ from: 1, to: 6 }));
 
     const quickToolbar = await screen.findByRole('toolbar', {
-      name: 'Formatting for selected text',
+      name: 'Selection actions',
     });
     expect(quickToolbar).toHaveStyle({ left: '8px', top: '20px' });
     expect(within(quickToolbar).getByRole('button', { name: 'Bold' })).toHaveAttribute(
@@ -427,8 +427,6 @@ describe('Editor text formatting', () => {
         name: 'Undo',
       }),
     );
-    expect(
-      screen.queryByRole('toolbar', { name: 'Formatting for selected text' }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('toolbar', { name: 'Selection actions' })).not.toBeInTheDocument();
   });
 });
