@@ -95,7 +95,20 @@ describe('Focus mode state', () => {
 
     expect(await screen.findByText('focused')).toBeInTheDocument();
     expect(screen.getByText('enabled')).toBeInTheDocument();
-    expect(request).not.toHaveBeenCalled();
+    expect(request).toHaveBeenCalledOnce();
+  });
+
+  it('stays in the in-app mode when fullscreen is blocked while opening a workspace', async () => {
+    Object.defineProperty(document.documentElement, 'requestFullscreen', {
+      configurable: true,
+      value: vi.fn(() => Promise.reject(new Error('Fullscreen denied'))),
+    });
+    localStorage.setItem('paperlens.full-workspace.enabled', 'true');
+
+    renderFocusHarness();
+
+    expect(await screen.findByText('focused')).toBeInTheDocument();
+    expect(await screen.findByText('fullscreen-fallback')).toBeInTheDocument();
   });
 
   it('applies the global preference when another workspace is opened', async () => {

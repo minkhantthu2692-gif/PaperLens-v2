@@ -6,6 +6,18 @@ import {
   readFullWorkspaceEnabled,
 } from '@/services/settings/fullWorkspace';
 
+type NavigatorWithUserActivation = Navigator & {
+  userActivation?: { isActive?: boolean };
+};
+
+// Browsers only grant fullscreen from a live user gesture. Opening a workspace
+// from the library is such a gesture, but loading a workspace URL directly is
+// not, so only ask for fullscreen when activation is actually available.
+function hasUserActivation(): boolean {
+  const activation = (navigator as NavigatorWithUserActivation).userActivation;
+  return activation?.isActive ?? true;
+}
+
 export function FocusModeProvider({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const [isFocusMode, setIsFocusMode] = useState(false);
@@ -41,10 +53,15 @@ export function FocusModeProvider({ children }: { children: ReactNode }) {
     }
     activeWorkspaceRef.current = pathname;
     if (fullWorkspaceEnabled) {
-      // Browser fullscreen needs a user gesture, so open the in-app mode at the
-      // global default and let the Focus control request fullscreen on demand.
-      setFullscreenError(false);
-      setIsFocusMode(true);
+      // Honor the global preference with the same experience as the Focus
+      // control: request browser fullscreen on the opening gesture, falling back
+      // to the in-app mode when the browser blocks or lacks it.
+      if (hasUserActivation()) {
+        handleSetFocusMode(true);
+      } else {
+        setFullscreenError(false);
+        setIsFocusMode(true);
+      }
       return;
     }
     handleSetFocusMode(false);
