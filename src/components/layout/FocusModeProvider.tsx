@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { FocusModeContext } from './FocusModeContext';
 import {
@@ -11,6 +11,7 @@ export function FocusModeProvider({ children }: { children: ReactNode }) {
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [fullWorkspaceEnabled, setFullWorkspaceEnabledState] = useState(readFullWorkspaceEnabled);
   const [fullscreenError, setFullscreenError] = useState(false);
+  const activeWorkspaceRef = useRef<string | null>(null);
 
   const handleSetFocusMode = useCallback((enabled: boolean) => {
     setFullscreenError(false);
@@ -31,9 +32,23 @@ export function FocusModeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!pathname.startsWith('/workspace/')) {
+      activeWorkspaceRef.current = null;
       handleSetFocusMode(false);
+      return;
     }
-  }, [pathname, handleSetFocusMode]);
+    if (activeWorkspaceRef.current === pathname) {
+      return;
+    }
+    activeWorkspaceRef.current = pathname;
+    if (fullWorkspaceEnabled) {
+      // Browser fullscreen needs a user gesture, so open the in-app mode at the
+      // global default and let the Focus control request fullscreen on demand.
+      setFullscreenError(false);
+      setIsFocusMode(true);
+      return;
+    }
+    handleSetFocusMode(false);
+  }, [pathname, fullWorkspaceEnabled, handleSetFocusMode]);
 
   useEffect(() => {
     if (!isFocusMode) {

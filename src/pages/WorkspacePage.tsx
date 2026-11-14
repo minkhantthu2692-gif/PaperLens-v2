@@ -89,8 +89,7 @@ export default function WorkspacePage() {
   const { documentId } = useParams<{ documentId: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { isFocusMode, setFocusMode, fullWorkspaceEnabled, fullscreenError, clearFullscreenError } =
-    useFocusMode();
+  const { isFocusMode, setFocusMode, fullscreenError, clearFullscreenError } = useFocusMode();
   const [document, setDocument] = useState<DocumentRecord | null>(null);
   const [asset, setAsset] = useState<SourceAsset | null>(null);
   const [loading, setLoading] = useState(true);
@@ -699,24 +698,22 @@ export default function WorkspacePage() {
                 >
                   <Eraser size={16} aria-hidden="true" />
                 </Button>
-                {fullWorkspaceEnabled ? (
-                  <Button
-                    ref={focusToggleRef}
-                    variant={isFocusMode ? 'secondary' : 'ghost'}
-                    size="sm"
-                    iconOnly
-                    toolbarLabel={t(
-                      isFocusMode ? 'workspace.exitFocusModeShort' : 'workspace.focusModeShort',
-                    )}
-                    onClick={() => setFocusMode(!isFocusMode)}
-                    disabled={!editorReady}
-                    aria-label={t(isFocusMode ? 'workspace.exitFocusMode' : 'workspace.focusMode')}
-                    title={t(isFocusMode ? 'workspace.exitFocusMode' : 'workspace.focusMode')}
-                    aria-pressed={isFocusMode}
-                  >
-                    <Focus size={16} aria-hidden="true" />
-                  </Button>
-                ) : null}
+                <Button
+                  ref={focusToggleRef}
+                  variant={isFocusMode ? 'secondary' : 'ghost'}
+                  size="sm"
+                  iconOnly
+                  toolbarLabel={t(
+                    isFocusMode ? 'workspace.exitFocusModeShort' : 'workspace.focusModeShort',
+                  )}
+                  onClick={() => setFocusMode(!isFocusMode)}
+                  disabled={!editorReady}
+                  aria-label={t(isFocusMode ? 'workspace.exitFocusMode' : 'workspace.focusMode')}
+                  title={t(isFocusMode ? 'workspace.exitFocusMode' : 'workspace.focusMode')}
+                  aria-pressed={isFocusMode}
+                >
+                  <Focus size={16} aria-hidden="true" />
+                </Button>
                 <div className={styles.exportWrap} ref={menuRef}>
                   <Button
                     variant="primary"

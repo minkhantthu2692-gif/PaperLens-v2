@@ -22,11 +22,17 @@ function FocusHarness() {
       <button type="button" onClick={() => setFocusMode(true)}>
         Enter
       </button>
+      <button type="button" onClick={() => setFocusMode(false)}>
+        Exit
+      </button>
       <button type="button" onClick={() => setFullWorkspaceEnabled(true)}>
         Enable Full Workspace
       </button>
       <button type="button" onClick={() => navigate('/settings')}>
         Navigate
+      </button>
+      <button type="button" onClick={() => navigate('/workspace/other')}>
+        Other workspace
       </button>
       <output>{isFocusMode ? 'focused' : 'normal'}</output>
       <output>{fullWorkspaceEnabled ? 'enabled' : 'disabled'}</output>
@@ -75,6 +81,49 @@ describe('Focus mode state', () => {
 
     await user.keyboard('{Escape}');
     expect(screen.getByText('normal')).toBeInTheDocument();
+  });
+
+  it('opens a workspace in Full Workspace when the global preference is enabled', async () => {
+    const request = vi.fn(() => Promise.resolve());
+    Object.defineProperty(document.documentElement, 'requestFullscreen', {
+      configurable: true,
+      value: request,
+    });
+    localStorage.setItem('paperlens.full-workspace.enabled', 'true');
+
+    renderFocusHarness();
+
+    expect(await screen.findByText('focused')).toBeInTheDocument();
+    expect(screen.getByText('enabled')).toBeInTheDocument();
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it('applies the global preference when another workspace is opened', async () => {
+    const user = userEvent.setup();
+    localStorage.setItem('paperlens.full-workspace.enabled', 'true');
+    renderFocusHarness('/workspace/one');
+
+    expect(await screen.findByText('focused')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Exit' }));
+    expect(screen.getByText('normal')).toBeInTheDocument();
+    expect(screen.getByText('enabled')).toBeInTheDocument();
+    expect(localStorage.getItem('paperlens.full-workspace.enabled')).toBe('true');
+
+    await user.click(screen.getByRole('button', { name: 'Other workspace' }));
+    expect(await screen.findByText('focused')).toBeInTheDocument();
+  });
+
+  it('opens each new workspace in normal mode when the global preference is disabled', async () => {
+    const user = userEvent.setup();
+    renderFocusHarness('/workspace/one');
+
+    expect(await screen.findByText('normal')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Enter' }));
+    expect(screen.getByText('focused')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Other workspace' }));
+    expect(await screen.findByText('normal')).toBeInTheDocument();
   });
 
   it('requests browser fullscreen from activation and exits it with Escape', async () => {

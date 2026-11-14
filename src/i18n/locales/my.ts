@@ -615,7 +615,7 @@ export const my: Widen<typeof en> = {
     appearanceDescription: 'ဤစက်ပစ္စည်းတွင် PaperLens ကို မည်သို့ပြသမည်ကို ရွေးပါ။',
     fullWorkspaceMode: 'Full Workspace မုဒ်ကို ဖွင့်ရန်',
     fullWorkspaceModeDescription:
-      'စာရွက်စာတမ်းများတွင် Full Workspace ခလုတ်ကို ပြသမည်။ ဖွင့်ထားခြင်းဖြင့် မျက်နှာပြင်အပြည့်ကို အလိုအလျောက် မဝင်ပါ။',
+      'Workspace တိုင်းကို Full Workspace မုဒ်ဖြင့် ပုံသေ ဖွင့်မည်။ စာရွက်စာတမ်းတစ်ခုချင်းစီအတွက် ပြောင်းနိုင်ဆဲဖြစ်သည်။',
     theme: 'အပြင်အဆင်',
     language: 'ဘာသာစကား',
     languageDescription: 'အင်္ဂလိပ်နှင့် မြန်မာ ပါဝင်သည်။',

@@ -595,7 +595,7 @@ export const en = {
     appearanceDescription: 'Choose how PaperLens looks on this device.',
     fullWorkspaceMode: 'Enable Full Workspace Mode',
     fullWorkspaceModeDescription:
-      'Show the Full Workspace control in documents. Enabling this does not enter fullscreen automatically.',
+      'Open every workspace in Full Workspace Mode by default. You can still toggle it per document.',
     theme: 'Theme',
     language: 'Language',
     languageDescription: 'English and Burmese are included.',
