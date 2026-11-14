@@ -60,11 +60,6 @@
     box-shadow var(--duration-fast) var(--easing-standard);
 }
 
-.toolbarExpandable:hover,
-.toolbarExpandable:focus-visible {
-  max-width: 20rem;
-}
-
 .toolbarLabel {
   display: inline-block;
   max-width: 0;
@@ -82,11 +77,26 @@
     opacity 100ms var(--easing-standard);
 }
 
-.toolbarExpandable:hover .toolbarLabel,
-.toolbarExpandable:focus-visible .toolbarLabel {
+.button.toolbarExpandable:focus-visible {
+  max-width: 20rem;
+}
+
+.button.toolbarExpandable:focus-visible .toolbarLabel {
   max-width: 16rem;
   margin-inline-start: var(--space-2);
   opacity: 1;
+}
+
+@media (hover: hover) {
+  .button.toolbarExpandable:hover {
+    max-width: 20rem;
+  }
+
+  .button.toolbarExpandable:hover .toolbarLabel {
+    max-width: 16rem;
+    margin-inline-start: var(--space-2);
+    opacity: 1;
+  }
 }
 
 .primary {
@@ -133,18 +143,6 @@
 .button:focus-visible {
   outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
-}
-
-@media (hover: none) {
-  .toolbarExpandable {
-    max-width: 20rem;
-  }
-
-  .toolbarExpandable .toolbarLabel {
-    max-width: 16rem;
-    margin-inline-start: var(--space-2);
-    opacity: 1;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
